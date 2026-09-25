@@ -298,10 +298,6 @@ export default function Home() {
         <section className={styles.panel}>
           {activeTab === "mapa" ? (
             <>
-              <div className={styles.mapHeader}>
-                <h2>Ubicación actual</h2>
-              </div>
-
               {locationLoading ? (
                 <p className={styles.status}>Solicitando coordenadas GPS...</p>
               ) : null}
@@ -331,7 +327,6 @@ export default function Home() {
               {!geoLayer.loading && !geoLayer.error && location ? (
                 geoLayer.matches.length > 0 ? (
                   <div className={styles.geoInfo}>
-                    <p className={styles.geoOk}>Tu ubicación sí pertenece a la capa de riesgo cargada en el servidor.</p>
                     {geoLayer.matches.map((match, index) => {
                       const category = typeof match.properties?.categoria === "string"
                         ? match.properties.categoria
