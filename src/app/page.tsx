@@ -3,37 +3,7 @@
 import { useEffect, useState } from "react";
 import styles from "./page.module.css";
 
-const geoEndpoints = [
-  { method: "GET", path: "/api/geo", description: "Documentación de la API geoespacial" },
-  {
-    method: "GET",
-    path: "/api/geo/contains?lng=-58.3816&lat=-34.6037",
-    description: "Consulta si un punto está dentro de un polígono del GeoJSON",
-  },
-  {
-    method: "POST",
-    path: "/api/geo/contains",
-    description: "Envía coordenadas y un GeoJSON para evaluar la intersección",
-  },
-];
 
-const riesgoEndpoints = [
-  {
-    method: "GET",
-    path: "/api/rio-parana?puerto=BARRANQUERAS&rio=PARANA",
-    description: "Devuelve la fila del río con el puerto y río indicados",
-  },
-  {
-    method: "GET",
-    path: "/api/rio-parana?puerto=PARANA&rio=PARANA",
-    description: "Consulta el registro del río Paraná en el puerto Paraná",
-  },
-  {
-    method: "GET",
-    path: "/api/geo/contains?lng=-58.3816&lat=-34.6037",
-    description: "Comprueba si el punto cae dentro de las capas de riesgo",
-  },
-];
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"mapa" | "riesgo">("mapa");
@@ -98,32 +68,57 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
+  const requestLocation = (retryWithLowAccuracy = false) => {
     if (!navigator.geolocation) {
       setLocationError("Tu navegador no soporta geolocalización GPS.");
       setLocationLoading(false);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy ?? null,
-        });
-        setLocationLoading(false);
-      },
-      (error) => {
-        setLocationError(error.message || "No se pudo obtener la ubicación del usuario.");
-        setLocationLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      },
-    );
+    setLocationError(null);
+    setLocationLoading(true);
+
+    const onSuccess = (position: GeolocationPosition) => {
+      setLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy ?? null,
+      });
+      setLocationLoading(false);
+    };
+
+    const onError = (error: GeolocationPositionError) => {
+      const isTimeout = error.code === error.TIMEOUT;
+      const isDenied = error.code === error.PERMISSION_DENIED;
+
+      if (isTimeout && !retryWithLowAccuracy) {
+        requestLocation(true);
+        return;
+      }
+
+      let message = error.message || "No se pudo obtener la ubicación del usuario.";
+
+      if (isTimeout) {
+        message = "La ubicación GPS tardó demasiado. Intenta nuevamente o revisa la señal del celular.";
+      }
+
+      if (isDenied) {
+        message = "Se denegó el acceso a la ubicación. Activa el permiso de GPS y vuelve a intentarlo.";
+      }
+
+      setLocationError(message);
+      setLocationLoading(false);
+    };
+
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: !retryWithLowAccuracy,
+      timeout: 30000,
+      maximumAge: 60000,
+    });
+  };
+
+  useEffect(() => {
+    requestLocation(false);
   }, []);
 
   useEffect(() => {
@@ -201,7 +196,18 @@ export default function Home() {
                 <p className={styles.status}>Solicitando coordenadas GPS...</p>
               ) : null}
 
-              {locationError ? <p className={styles.error}>{locationError}</p> : null}
+              {locationError ? (
+                <div>
+                  <p className={styles.error}>{locationError}</p>
+                  <button
+                    type="button"
+                    className={styles.retryButton}
+                    onClick={() => requestLocation(false)}
+                  >
+                    Reintentar GPS
+                  </button>
+                </div>
+              ) : null}
 
               {location ? (
                 <div className={styles.resultGrid}>

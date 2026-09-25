@@ -101,6 +101,21 @@
   color: #b91c1c;
 }
 
+.retryButton {
+  border: none;
+  border-radius: 10px;
+  background: #111827;
+  color: white;
+  font-weight: 700;
+  padding: 10px 16px;
+  cursor: pointer;
+  margin-bottom: 18px;
+}
+
+.retryButton:hover {
+  background: #1f2937;
+}
+
 .resultGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
