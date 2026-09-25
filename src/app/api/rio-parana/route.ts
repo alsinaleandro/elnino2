@@ -97,21 +97,31 @@ function mapRow(cells: string[]) {
   const firstCell = cells[0] ?? "";
   const secondCell = cells[1] ?? "";
 
+  const alturaActual = toNumber(cells[2]);
+  const variacion = toNumber(cells[3]);
+  const intervaloHoras = toNumber(cells[4]);
+  const fechaHoraActual = cells[5] || null;
+  const tendencia = cells[6] || null;
+  const alturaAnterior = toNumber(cells[7]);
+  const fechaHoraAnterior = cells[8] || null;
+  const cotaMinima = toNumber(cells[9]);
+  const cotaMaxima = toNumber(cells[10]);
+
   return {
     estacion: firstCell,
     rio: secondCell || firstCell,
-    alturaActual: toNumber(cells[2]),
-    variacion: toNumber(cells[3]),
-    intervaloHoras: toNumber(cells[4]),
-    fechaHoraActual: cells[5] || null,
-    tendencia: cells[6] || null,
+    alturaActual,
+    variacion,
+    intervaloHoras,
+    fechaHoraActual,
+    tendencia,
     alerta: findNamedValue(cells, ["ALERTA"]) || null,
-    evacuacion: findNamedValue(cells, ["EVACUACION", "EVACUACION"]) || null,
-    alturaAnterior: toNumber(cells[8]),
-    fechaHoraAnterior: cells[9] || null,
-    cotaMinima: toNumber(cells[10]),
-    cotaMaxima: toNumber(cells[11]),
-    icono: cells[12] || null,
+    evacuacion: findNamedValue(cells, ["EVACUACION"]) || null,
+    alturaAnterior,
+    fechaHoraAnterior,
+    cotaMinima,
+    cotaMaxima,
+    icono: cells[11] || null,
   };
 }
 
