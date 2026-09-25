@@ -250,7 +250,7 @@ export default function Home() {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
         scrollWheelZoom: true,
-      }).setView([location.latitude, location.longitude], 9);
+      }).setView([location.latitude, location.longitude], 12);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
