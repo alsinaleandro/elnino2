@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./page.module.css";
 
-
+declare global {
+  interface Window {
+    L?: any;
+  }
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"mapa" | "riesgo">("mapa");
@@ -26,6 +30,8 @@ export default function Home() {
     error: null,
     matches: [],
   });
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -160,6 +166,110 @@ export default function Home() {
     loadGeoLayer();
   }, [location]);
 
+  useEffect(() => {
+    if (!location || !mapContainerRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const initializeMap = () => {
+      if (cancelled || typeof window === "undefined") {
+        return;
+      }
+
+      const L = window.L;
+
+      if (!L) {
+        const cssLink = document.querySelector("link[data-leaflet-css]");
+        if (!cssLink) {
+          const link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+          link.setAttribute("data-leaflet-css", "true");
+          document.head.appendChild(link);
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        script.async = true;
+        script.onload = initializeMap;
+        document.body.appendChild(script);
+        return;
+      }
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
+
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: true,
+        scrollWheelZoom: true,
+      }).setView([location.latitude, location.longitude], 9);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map);
+
+      const userMarker = L.circleMarker([location.latitude, location.longitude], {
+        radius: 10,
+        color: "#dc2626",
+        fillColor: "#ef4444",
+        fillOpacity: 0.95,
+        weight: 2,
+      });
+      userMarker.addTo(map);
+      userMarker.bindPopup("Tu ubicación actual");
+
+      fetch("/data/riesgo_hidrico_AMGR_todas.geojson")
+        .then((response) => response.json())
+        .then((geojsonData) => {
+          if (cancelled) {
+            return;
+          }
+
+          const layer = L.geoJSON(geojsonData, {
+            onEachFeature: (feature: any, layerItem: any) => {
+              const category = feature?.properties?.categoria ?? "Zona de riesgo";
+              const area = feature?.properties?.area_ha ?? "-";
+              layerItem.bindPopup(`<strong>${category}</strong><br>Área: ${area} ha`);
+            },
+          });
+
+          layer.addTo(map);
+
+          if (layer.getBounds && layer.getBounds().isValid()) {
+            map.fitBounds(layer.getBounds().pad(0.2));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setGeoLayer((current) => ({
+              ...current,
+              error: "No se pudo cargar la capa GeoJSON para mostrarla en el mapa.",
+            }));
+          }
+        });
+
+      mapInstanceRef.current = map;
+    };
+
+    if (typeof window !== "undefined" && window.L) {
+      initializeMap();
+    } else {
+      initializeMap();
+    }
+
+    return () => {
+      cancelled = true;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [location]);
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -210,19 +320,8 @@ export default function Home() {
               ) : null}
 
               {location ? (
-                <div className={styles.resultGrid}>
-                  <div className={styles.metric}>
-                    <span>Latitud</span>
-                    <strong>{location.latitude.toFixed(6)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Longitud</span>
-                    <strong>{location.longitude.toFixed(6)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Precisión</span>
-                    <strong>{location.accuracy !== null ? `${location.accuracy.toFixed(0)} m` : "-"}</strong>
-                  </div>
+                <div className={styles.mapWrap}>
+                  <div ref={mapContainerRef} className={styles.map} />
                 </div>
               ) : null}
 
