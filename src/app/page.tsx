@@ -9,8 +9,17 @@ declare global {
   }
 }
 
+const normalizeRiskText = (value?: string | null) =>
+  String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const getDangerLevel = (category?: string | null) => {
-  const normalized = String(category ?? "").trim().toUpperCase();
+  const normalized = normalizeRiskText(category);
 
   if (normalized.includes("PROHIBIDA")) {
     return { label: "ZONA PROHIBIDA", tone: "dangerHigh" };
@@ -59,6 +68,7 @@ export default function Home() {
       ? String(geoLayer.matches[0].properties?.categoria)
       : null;
   const matchedRiskLevel = getDangerLevel(matchedRiskCategory);
+  const isRiskMatchResolved = !locationLoading && !geoLayer.loading && !geoLayer.error;
 
   useEffect(() => {
     let isMounted = true;
@@ -384,11 +394,6 @@ export default function Home() {
             </>
           ) : (
             <>
-              <div className={styles.riskSummary}>
-                <div className={styles.queryPill}>Puerto: BARRANQUERAS</div>
-                <div className={styles.queryPill}>Río: PARANA</div>
-              </div>
-
               {riskLoading ? <p className={styles.status}>Cargando información del río...</p> : null}
               {riskError ? <p className={styles.error}>{riskError}</p> : null}
 
@@ -396,12 +401,22 @@ export default function Home() {
                 <div className={styles.zoneHeader}>
                   <span>Zona coincidente</span>
                   <span className={`${styles.dangerBadge} ${styles[matchedRiskLevel.tone]}`}>
-                    {matchedRiskLevel.label}
+                    {isRiskMatchResolved && geoLayer.matches.length > 0
+                      ? matchedRiskLevel.label
+                      : locationLoading || geoLayer.loading
+                        ? "CARGANDO..."
+                        : "SIN ZONA COINCIDENTE"}
                   </span>
                 </div>
 
                 <div className={styles.dangerMeter} aria-label="Nivel de peligro">
-                  <span className={`${styles.dangerBar} ${styles[matchedRiskLevel.tone]}`} />
+                  <span
+                    className={`${styles.dangerBar} ${
+                      isRiskMatchResolved && geoLayer.matches.length > 0
+                        ? styles[matchedRiskLevel.tone]
+                        : styles.dangerNeutral
+                    }`}
+                  />
                 </div>
               </div>
 
