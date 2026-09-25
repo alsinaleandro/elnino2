@@ -250,11 +250,11 @@ export default function Home() {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
         scrollWheelZoom: true,
-      }).setView([location.latitude, location.longitude], 12);
+      }).setView([location.latitude, location.longitude], 16);
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
-        maxZoom: 19,
+        maxZoom: 15,
       }).addTo(map);
 
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
