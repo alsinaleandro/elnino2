@@ -57,6 +57,42 @@ function parseRowsFromHtml(html: string) {
     });
 }
 
+function findNamedValue(cells: string[], labels: string[]) {
+  const normalizedLabels = labels.map((label) => normalizeKey(label));
+
+  for (let index = 0; index < cells.length; index += 1) {
+    const currentCell = normalizeText(cells[index] ?? "");
+    const currentKey = normalizeKey(currentCell);
+
+    if (!normalizedLabels.some((label) => currentKey.includes(label))) {
+      continue;
+    }
+
+    const candidateStart = index + 1;
+    const candidateLimit = Math.min(cells.length, index + 6);
+
+    for (let candidateIndex = candidateStart; candidateIndex < candidateLimit; candidateIndex += 1) {
+      const candidate = normalizeText(cells[candidateIndex] ?? "");
+
+      if (!candidate) {
+        continue;
+      }
+
+      const candidateKey = normalizeKey(candidate);
+
+      if (!candidateKey) {
+        continue;
+      }
+
+      if (!normalizedLabels.some((label) => candidateKey.includes(label))) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
 function mapRow(cells: string[]) {
   const firstCell = cells[0] ?? "";
   const secondCell = cells[1] ?? "";
@@ -69,6 +105,8 @@ function mapRow(cells: string[]) {
     intervaloHoras: toNumber(cells[4]),
     fechaHoraActual: cells[5] || null,
     tendencia: cells[6] || null,
+    alerta: findNamedValue(cells, ["ALERTA"]) || null,
+    evacuacion: findNamedValue(cells, ["EVACUACION", "EVACUACION"]) || null,
     alturaAnterior: toNumber(cells[8]),
     fechaHoraAnterior: cells[9] || null,
     cotaMinima: toNumber(cells[10]),
@@ -125,6 +163,8 @@ function buildFallbackRow(puerto: string, rio: string) {
     intervaloHoras: 12,
     fechaHoraActual: "25/SEP/26 - 1200",
     tendencia: "BAJA",
+    alerta: null,
+    evacuacion: null,
     alturaAnterior: null,
     fechaHoraAnterior: "4.45",
     cotaMinima: 6.5,

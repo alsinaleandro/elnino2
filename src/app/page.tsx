@@ -450,6 +450,14 @@ export default function Home() {
                     <span>Estado</span>
                     <strong>{String(riskData.tendencia ?? "-")}</strong>
                   </div>
+                  <div className={styles.metric}>
+                    <span>Alerta</span>
+                    <strong>{String(riskData.alerta ?? "-")}</strong>
+                  </div>
+                  <div className={styles.metric}>
+                    <span>Evacuación</span>
+                    <strong>{String(riskData.evacuacion ?? "-")}</strong>
+                  </div>
                 </div>
               ) : null}
             </>
