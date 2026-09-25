@@ -85,7 +85,86 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  margin-bottom: 12px;
+}
+
+.riskZoneCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
   margin-bottom: 18px;
+}
+
+.zoneHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.zoneHeader span:first-child {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.dangerBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 800;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.dangerMeter {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.dangerBar {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+}
+
+.dangerHigh {
+  background: #ef4444;
+  color: white;
+}
+
+.dangerSevere {
+  background: #f97316;
+  color: white;
+}
+
+.dangerTemporary {
+  background: #f59e0b;
+  color: #1f2937;
+}
+
+.dangerLight {
+  background: #3b82f6;
+  color: white;
+}
+
+.dangerNeutral {
+  background: #9ca3af;
+  color: white;
 }
 
 .queryPill {

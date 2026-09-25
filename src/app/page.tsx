@@ -9,6 +9,28 @@ declare global {
   }
 }
 
+const getDangerLevel = (category?: string | null) => {
+  const normalized = String(category ?? "").trim().toUpperCase();
+
+  if (normalized.includes("PROHIBIDA")) {
+    return { label: "ZONA PROHIBIDA", tone: "dangerHigh" };
+  }
+
+  if (normalized.includes("RESTRICCION SEVERA TEMPORARIA")) {
+    return { label: "ZONA DE RESTRICCION SEVERA TEMPORARIA", tone: "dangerTemporary" };
+  }
+
+  if (normalized.includes("RESTRICCION SEVERA")) {
+    return { label: "ZONA DE RESTRICCION SEVERA", tone: "dangerSevere" };
+  }
+
+  if (normalized.includes("RESTRICCION LEVE")) {
+    return { label: "ZONA DE RESTRICCION LEVE", tone: "dangerLight" };
+  }
+
+  return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"mapa" | "riesgo">("mapa");
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
@@ -32,6 +54,11 @@ export default function Home() {
   });
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
+  const matchedRiskCategory =
+    geoLayer.matches[0]?.properties?.categoria != null
+      ? String(geoLayer.matches[0].properties?.categoria)
+      : null;
+  const matchedRiskLevel = getDangerLevel(matchedRiskCategory);
 
   useEffect(() => {
     let isMounted = true;
@@ -364,6 +391,19 @@ export default function Home() {
 
               {riskLoading ? <p className={styles.status}>Cargando información del río...</p> : null}
               {riskError ? <p className={styles.error}>{riskError}</p> : null}
+
+              <div className={styles.riskZoneCard}>
+                <div className={styles.zoneHeader}>
+                  <span>Zona coincidente</span>
+                  <span className={`${styles.dangerBadge} ${styles[matchedRiskLevel.tone]}`}>
+                    {matchedRiskLevel.label}
+                  </span>
+                </div>
+
+                <div className={styles.dangerMeter} aria-label="Nivel de peligro">
+                  <span className={`${styles.dangerBar} ${styles[matchedRiskLevel.tone]}`} />
+                </div>
+              </div>
 
               {riskData ? (
                 <div className={styles.resultGrid}>
