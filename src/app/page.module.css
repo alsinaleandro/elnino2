@@ -77,8 +77,8 @@
 
 .map {
   width: 100%;
-  height: 520px;
-  min-height: 320px;
+  height: 340px;
+  min-height: 260px;
 }
 
 .riskSummary {
@@ -245,6 +245,11 @@
 
   .tab {
     flex: 1;
+  }
+
+  .map {
+    height: 260px;
+    min-height: 220px;
   }
 
   .row {
