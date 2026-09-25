@@ -40,6 +40,14 @@ const getDangerLevel = (category?: string | null) => {
   return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
 };
 
+const formatMetricValue = (value: unknown) => {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return "Sin dato";
+  }
+
+  return String(value);
+};
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"mapa" | "riesgo">("mapa");
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
@@ -428,35 +436,35 @@ export default function Home() {
                 <div className={styles.resultGrid}>
                   <div className={styles.metric}>
                     <span>Puerto</span>
-                    <strong>{String(riskData.estacion ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.estacion)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Río</span>
-                    <strong>{String(riskData.rio ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.rio)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Altura actual</span>
-                    <strong>{String(riskData.alturaActual ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.alturaActual)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Variación</span>
-                    <strong>{String(riskData.variacion ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.variacion)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Período</span>
-                    <strong>{String(riskData.intervaloHoras ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.intervaloHoras)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Estado</span>
-                    <strong>{String(riskData.tendencia ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.tendencia)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Alerta</span>
-                    <strong>{String(riskData.alerta ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.alerta)}</strong>
                   </div>
                   <div className={styles.metric}>
                     <span>Evacuación</span>
-                    <strong>{String(riskData.evacuacion ?? "-")}</strong>
+                    <strong>{formatMetricValue(riskData.evacuacion)}</strong>
                   </div>
                 </div>
               ) : null}
