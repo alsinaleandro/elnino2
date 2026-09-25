@@ -204,6 +204,14 @@ export default function Home() {
   }, [location]);
 
   useEffect(() => {
+    if (activeTab !== "mapa") {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      return;
+    }
+
     if (!location || !mapContainerRef.current) {
       return;
     }
@@ -292,11 +300,7 @@ export default function Home() {
       mapInstanceRef.current = map;
     };
 
-    if (typeof window !== "undefined" && window.L) {
-      initializeMap();
-    } else {
-      initializeMap();
-    }
+    initializeMap();
 
     return () => {
       cancelled = true;
@@ -305,7 +309,7 @@ export default function Home() {
         mapInstanceRef.current = null;
       }
     };
-  }, [location]);
+  }, [activeTab, location]);
 
   return (
     <div className={styles.page}>
@@ -352,7 +356,7 @@ export default function Home() {
                 </div>
               ) : null}
 
-              {location ? (
+              {activeTab === "mapa" && location ? (
                 <div className={styles.mapWrap}>
                   <div ref={mapContainerRef} className={styles.map} />
                 </div>

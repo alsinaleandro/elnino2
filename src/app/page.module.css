@@ -16,21 +16,21 @@
 .tabs {
   display: inline-flex;
   width: fit-content;
-  padding: 4px;
-  border-radius: 12px;
+  padding: 3px;
+  border-radius: 10px;
   background: rgba(15, 23, 42, 0.04);
   border: 1px solid #e5e7eb;
-  gap: 6px;
+  gap: 4px;
 }
 
 .tab {
   border: none;
   background: transparent;
   color: #374151;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  padding: 8px 14px;
-  border-radius: 9px;
+  padding: 7px 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -42,7 +42,7 @@
 .tabActive {
   background: #111827;
   color: white;
-  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.15);
 }
 
 .panel {
@@ -315,15 +315,18 @@
 
 @media (max-width: 700px) {
   .page {
-    padding: 40px 18px;
+    padding: 18px 12px;
   }
 
   .tabs {
     width: 100%;
+    padding: 3px;
   }
 
   .tab {
     flex: 1;
+    padding: 8px 10px;
+    font-size: 0.88rem;
   }
 
   .map {
