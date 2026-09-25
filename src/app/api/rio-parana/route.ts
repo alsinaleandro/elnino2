@@ -1,5 +1,10 @@
 const SOURCE_URL = "https://contenidosweb.prefecturanaval.gob.ar/alturas/";
 
+// Prefectura solo acepta conexiones desde Argentina. Fuera del país (p. ej. en Vercel) se
+// consulta a través de un proxy en un VPS argentino; ver deploy/nginx-prefectura.conf.
+const PROXY_URL = process.env.PREFECTURA_PROXY_URL;
+const PROXY_TOKEN = process.env.PREFECTURA_PROXY_TOKEN;
+
 function normalizeText(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -125,16 +130,28 @@ function describeError(error: unknown) {
 async function fetchSource(attempts = 3) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await fetch(SOURCE_URL, {
+      const response = await fetch(PROXY_URL || SOURCE_URL, {
         headers: {
           "User-Agent": "Mozilla/5.0",
           Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          ...(PROXY_TOKEN ? { "X-Proxy-Token": PROXY_TOKEN } : {}),
         },
         cache: "no-store",
         signal: AbortSignal.timeout(15000),
       });
+
+      // Detrás del proxy, esos mismos cortes llegan como 502/504 de nginx.
+      if ([502, 503, 504].includes(response.status) && attempt < attempts) {
+        console.warn(`[rio-parana] intento ${attempt} respondió HTTP ${response.status}`);
+        continue;
+      }
+
+      return response;
     } catch (error) {
-      const isTimeout = error instanceof Error && error.name === "TimeoutError";
+      // Un timeout de conexión no se arregla reintentando (p. ej. el sitio bloquea IPs de fuera de Argentina).
+      const causeCode = error instanceof Error ? (error.cause as { code?: string } | undefined)?.code : undefined;
+      const isTimeout =
+        (error instanceof Error && error.name === "TimeoutError") || causeCode === "UND_ERR_CONNECT_TIMEOUT";
 
       if (isTimeout || attempt >= attempts) {
         throw error;
