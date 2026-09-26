@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import DangerGauge, { type DangerTone } from "./DangerGauge";
 import styles from "./page.module.css";
 
 declare global {
@@ -18,7 +19,7 @@ const normalizeRiskText = (value?: string | null) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const getDangerLevel = (category?: string | null) => {
+const getDangerLevel = (category?: string | null): { label: string; tone: DangerTone } => {
   const normalized = normalizeRiskText(category);
 
   if (normalized.includes("PROHIBIDA")) {
@@ -516,15 +517,10 @@ export default function Home() {
                   </span>
                 </div>
 
-                <div className={styles.dangerMeter} aria-label="Nivel de peligro">
-                  <span
-                    className={`${styles.dangerBar} ${
-                      isRiskMatchResolved && geoLayer.matches.length > 0
-                        ? styles[matchedRiskLevel.tone]
-                        : styles.dangerNeutral
-                    }`}
-                  />
-                </div>
+                <DangerGauge
+                  tone={isRiskMatchResolved && geoLayer.matches.length > 0 ? matchedRiskLevel.tone : null}
+                  label={isRiskMatchResolved && geoLayer.matches.length > 0 ? matchedRiskLevel.label : "sin zona coincidente"}
+                />
               </div>
 
               {riskData ? (
