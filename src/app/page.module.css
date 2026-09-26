@@ -210,6 +210,14 @@
   background: #1f2937;
 }
 
+.panel h2.riverTitle {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #111827;
+}
+
 .resultGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

@@ -40,6 +40,10 @@ const getDangerLevel = (category?: string | null) => {
   return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
 };
 
+// Con esta precisión se deja de escuchar al GPS.
+const GOOD_ACCURACY_METERS = 25;
+const GPS_WATCH_MAX_MS = 45000;
+
 const formatMetricValue = (value: unknown) => {
   if (value === null || value === undefined || String(value).trim() === "") {
     return "Sin dato";
@@ -71,6 +75,7 @@ export default function Home() {
   });
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
   const matchedRiskCategory =
     geoLayer.matches[0]?.properties?.categoria != null
       ? String(geoLayer.matches[0].properties?.categoria)
@@ -119,57 +124,114 @@ export default function Home() {
     };
   }, []);
 
-  const requestLocation = (retryWithLowAccuracy = false) => {
+  // La ubicación se obtiene en dos etapas: primero una rápida (WiFi/antenas, < 1 s) para
+  // mostrar el mapa enseguida, y en paralelo el GPS, que puede tardar varios segundos y va
+  // reemplazando la posición a medida que mejora la precisión.
+  const watchIdRef = useRef<number | null>(null);
+  const watchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopWatchingLocation = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    if (watchTimeoutRef.current !== null) {
+      clearTimeout(watchTimeoutRef.current);
+      watchTimeoutRef.current = null;
+    }
+  };
+
+  const requestLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Tu navegador no soporta geolocalización GPS.");
-      setLocationLoading(false);
+      // Asincrónico para no cambiar el estado dentro del efecto que llama a esta función.
+      queueMicrotask(() => {
+        setLocationError("Tu navegador no soporta geolocalización GPS.");
+        setLocationLoading(false);
+      });
       return;
     }
 
-    setLocationError(null);
-    setLocationLoading(true);
+    stopWatchingLocation();
+
+    let hasPosition = false;
+    let pendingRequests = 2;
 
     const onSuccess = (position: GeolocationPosition) => {
-      setLocation({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy ?? null,
-      });
+      const accuracy = position.coords.accuracy ?? null;
+
+      // Solo se reemplaza la posición si la nueva es más precisa que la actual.
+      setLocation((current) =>
+        current && current.accuracy !== null && accuracy !== null && accuracy >= current.accuracy
+          ? current
+          : { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy },
+      );
+      hasPosition = true;
+      setLocationError(null);
       setLocationLoading(false);
+
+      if (accuracy !== null && accuracy <= GOOD_ACCURACY_METERS) {
+        stopWatchingLocation();
+      }
     };
 
+    // Solo se muestra un error si ninguna de las dos etapas consiguió una posición.
     const onError = (error: GeolocationPositionError) => {
-      const isTimeout = error.code === error.TIMEOUT;
-      const isDenied = error.code === error.PERMISSION_DENIED;
+      pendingRequests -= 1;
 
-      if (isTimeout && !retryWithLowAccuracy) {
-        requestLocation(true);
+      if (error.code === error.PERMISSION_DENIED) {
+        stopWatchingLocation();
+        setLocationError("Se denegó el acceso a la ubicación. Activa el permiso de GPS y vuelve a intentarlo.");
+        setLocationLoading(false);
         return;
       }
 
-      let message = error.message || "No se pudo obtener la ubicación del usuario.";
-
-      if (isTimeout) {
-        message = "La ubicación GPS tardó demasiado. Intenta nuevamente o revisa la señal del celular.";
+      if (hasPosition || pendingRequests > 0) {
+        return;
       }
 
-      if (isDenied) {
-        message = "Se denegó el acceso a la ubicación. Activa el permiso de GPS y vuelve a intentarlo.";
-      }
-
-      setLocationError(message);
+      setLocationError(
+        error.code === error.TIMEOUT
+          ? "La ubicación GPS tardó demasiado. Intenta nuevamente o revisa la señal del celular."
+          : error.message || "No se pudo obtener la ubicación del usuario.",
+      );
       setLocationLoading(false);
     };
 
     navigator.geolocation.getCurrentPosition(onSuccess, onError, {
-      enableHighAccuracy: !retryWithLowAccuracy,
-      timeout: 30000,
-      maximumAge: 60000,
+      enableHighAccuracy: false,
+      timeout: 10000,
+      maximumAge: 5 * 60 * 1000,
     });
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      onSuccess,
+      (error) => {
+        stopWatchingLocation();
+        onError(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 0,
+      },
+    );
+
+    // El GPS no se deja encendido indefinidamente: gasta batería.
+    watchTimeoutRef.current = setTimeout(() => {
+      stopWatchingLocation();
+
+      if (!hasPosition) {
+        pendingRequests = 0;
+        setLocationError("La ubicación GPS tardó demasiado. Intenta nuevamente o revisa la señal del celular.");
+        setLocationLoading(false);
+      }
+    }, GPS_WATCH_MAX_MS);
   };
 
   useEffect(() => {
-    requestLocation(false);
+    requestLocation();
+    return stopWatchingLocation;
   }, []);
 
   useEffect(() => {
@@ -178,10 +240,14 @@ export default function Home() {
     }
 
     const { latitude, longitude } = location;
+    let cancelled = false;
 
     async function loadGeoLayer() {
       try {
-        setGeoLayer({ loading: true, error: null, matches: [] });
+        // Al afinar la posición se conserva el resultado anterior en pantalla hasta tener el nuevo.
+        setGeoLayer((current) =>
+          current.matches.length > 0 ? current : { loading: true, error: null, matches: [] },
+        );
 
         const response = await fetch(
           `/api/geo/contains?lng=${longitude}&lat=${latitude}`,
@@ -193,25 +259,44 @@ export default function Home() {
           throw new Error(payload?.error || "No se pudo consultar la capa de riesgo.");
         }
 
-        setGeoLayer({
-          loading: false,
-          error: null,
-          matches: payload.matches ?? [],
-        });
+        if (!cancelled) {
+          setGeoLayer({
+            loading: false,
+            error: null,
+            matches: payload.matches ?? [],
+          });
+        }
       } catch (error) {
-        setGeoLayer({
-          loading: false,
-          error:
-            error instanceof Error ? error.message : "No se pudo verificar la capa geográfica.",
-          matches: [],
-        });
+        if (!cancelled) {
+          setGeoLayer({
+            loading: false,
+            error:
+              error instanceof Error ? error.message : "No se pudo verificar la capa geográfica.",
+            matches: [],
+          });
+        }
       }
     }
 
     loadGeoLayer();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location]);
+
+  // El mapa se crea una sola vez (cuando llega la primera posición); las posiciones más
+  // precisas que llegan después solo mueven el marcador, en el efecto siguiente.
+  const hasLocation = location !== null;
+  const locationRef = useRef(location);
+
+  useEffect(() => {
+    locationRef.current = location;
   }, [location]);
 
   useEffect(() => {
+    const location = locationRef.current;
+
     if (activeTab !== "mapa") {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -274,6 +359,7 @@ export default function Home() {
       });
       userMarker.addTo(map);
       userMarker.bindPopup("Tu ubicación actual");
+      userMarkerRef.current = userMarker;
 
       fetch("/data/riesgo_hidrico_AMGR_todas.geojson")
         .then((response) => response.json())
@@ -312,12 +398,19 @@ export default function Home() {
 
     return () => {
       cancelled = true;
+      userMarkerRef.current = null;
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [activeTab, location]);
+  }, [activeTab, hasLocation]);
+
+  useEffect(() => {
+    if (location && userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([location.latitude, location.longitude]);
+    }
+  }, [location]);
 
   return (
     <div className={styles.page}>
@@ -357,7 +450,11 @@ export default function Home() {
                   <button
                     type="button"
                     className={styles.retryButton}
-                    onClick={() => requestLocation(false)}
+                    onClick={() => {
+                      setLocationError(null);
+                      setLocationLoading(true);
+                      requestLocation();
+                    }}
                   >
                     Reintentar GPS
                   </button>
@@ -431,40 +528,37 @@ export default function Home() {
               </div>
 
               {riskData ? (
-                <div className={styles.resultGrid}>
-                  <div className={styles.metric}>
-                    <span>Puerto</span>
-                    <strong>{formatMetricValue(riskData.estacion)}</strong>
+                <>
+                  <h2 className={styles.riverTitle}>
+                    Estado actual del río Paraná en el puerto Barranqueras
+                  </h2>
+                  <div className={styles.resultGrid}>
+                    <div className={styles.metric}>
+                      <span>Altura actual</span>
+                      <strong>{formatMetricValue(riskData.alturaActual)}</strong>
+                    </div>
+                    <div className={styles.metric}>
+                      <span>Variación</span>
+                      <strong>{formatMetricValue(riskData.variacion)}</strong>
+                    </div>
+                    <div className={styles.metric}>
+                      <span>Período</span>
+                      <strong>{formatMetricValue(riskData.intervaloHoras)}</strong>
+                    </div>
+                    <div className={styles.metric}>
+                      <span>Estado</span>
+                      <strong>{formatMetricValue(riskData.tendencia)}</strong>
+                    </div>
+                    <div className={styles.metric}>
+                      <span>Alerta</span>
+                      <strong>{formatMetricValue(riskData.alerta)}</strong>
+                    </div>
+                    <div className={styles.metric}>
+                      <span>Evacuación</span>
+                      <strong>{formatMetricValue(riskData.evacuacion)}</strong>
+                    </div>
                   </div>
-                  <div className={styles.metric}>
-                    <span>Río</span>
-                    <strong>{formatMetricValue(riskData.rio)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Altura actual</span>
-                    <strong>{formatMetricValue(riskData.alturaActual)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Variación</span>
-                    <strong>{formatMetricValue(riskData.variacion)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Período</span>
-                    <strong>{formatMetricValue(riskData.intervaloHoras)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Estado</span>
-                    <strong>{formatMetricValue(riskData.tendencia)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Alerta</span>
-                    <strong>{formatMetricValue(riskData.alerta)}</strong>
-                  </div>
-                  <div className={styles.metric}>
-                    <span>Evacuación</span>
-                    <strong>{formatMetricValue(riskData.evacuacion)}</strong>
-                  </div>
-                </div>
+                </>
               ) : null}
             </>
           )}
