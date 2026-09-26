@@ -12,6 +12,16 @@ const SEGMENTS: Array<{ tone: DangerTone; label: string; title: string; color: s
   { tone: "dangerHigh", label: "Prohibida", title: "Zona prohibida", color: "#d03b3b" },
 ];
 
+// Colores de cada nivel, compartidos con la capa del mapa (page.tsx). stroke = borde más oscuro
+// para que el contorno se distinga sobre el mapa.
+export const DANGER_COLORS: Record<DangerTone, { fill: string; stroke: string }> = {
+  dangerLight: { fill: "#0ca30c", stroke: "#087a08" },
+  dangerTemporary: { fill: "#fab219", stroke: "#b7791f" },
+  dangerSevere: { fill: "#fab219", stroke: "#b7791f" },
+  dangerHigh: { fill: "#d03b3b", stroke: "#a12828" },
+  dangerNeutral: { fill: "#9ca3af", stroke: "#6b7280" },
+};
+
 const CX = 150;
 const CY = 128;
 const RADIUS = 96;

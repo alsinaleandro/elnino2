@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import DangerGauge, { type DangerTone } from "./DangerGauge";
+import DangerGauge, { DANGER_COLORS, type DangerTone } from "./DangerGauge";
 import RainForecast from "./RainForecast";
 import RiverGauge from "./RiverGauge";
 import styles from "./page.module.css";
@@ -42,6 +42,38 @@ const getDangerLevel = (category?: string | null): { label: string; tone: Danger
 
   return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
 };
+
+const STRIPES_PATTERN_ID = "zona-temporaria-rayas";
+
+// Leaflet dibuja los polígonos en un <svg> propio: se le agrega el patrón de rayas amarillas
+// que usa la zona "severa temporaria" como relleno.
+function addStripesPattern(map: { getPanes(): { overlayPane: HTMLElement } }) {
+  const svg: SVGSVGElement | null = map.getPanes().overlayPane.querySelector("svg");
+  if (!svg || svg.querySelector(`#${STRIPES_PATTERN_ID}`)) {
+    return;
+  }
+
+  const ns = "http://www.w3.org/2000/svg";
+  const defs = svg.querySelector("defs") ?? svg.insertBefore(document.createElementNS(ns, "defs"), svg.firstChild);
+  const pattern = document.createElementNS(ns, "pattern");
+  pattern.setAttribute("id", STRIPES_PATTERN_ID);
+  pattern.setAttribute("width", "10");
+  pattern.setAttribute("height", "10");
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+  pattern.setAttribute("patternTransform", "rotate(45)");
+
+  const { fill, stroke } = DANGER_COLORS.dangerTemporary;
+  for (const [x, width, color] of [[0, 10, fill], [0, 4, stroke]] as const) {
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("width", String(width));
+    rect.setAttribute("height", "10");
+    rect.setAttribute("fill", color);
+    pattern.appendChild(rect);
+  }
+
+  defs.appendChild(pattern);
+}
 
 // Con esta precisión se deja de escuchar al GPS.
 const GOOD_ACCURACY_METERS = 25;
@@ -362,11 +394,12 @@ export default function Home() {
       }).addTo(map);
 
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
-        radius: 10,
-        color: "#dc2626",
-        fillColor: "#ef4444",
-        fillOpacity: 0.95,
-        weight: 2,
+        // Azul con borde blanco: se distingue sobre las zonas roja, amarilla y verde.
+        radius: 9,
+        color: "#ffffff",
+        fillColor: "#2563eb",
+        fillOpacity: 1,
+        weight: 3,
       });
       userMarker.addTo(map);
       userMarker.bindPopup("Tu ubicación actual");
@@ -379,7 +412,19 @@ export default function Home() {
             return;
           }
 
+          // Mismos colores que el indicador de la pestaña Riesgo. La zona "severa temporaria" usa un
+          // relleno amarillo rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
+            style: (feature?: { properties?: { categoria?: string } }) => {
+              const tone = getDangerLevel(feature?.properties?.categoria).tone;
+              const colors = DANGER_COLORS[tone];
+              return {
+                color: colors.stroke,
+                weight: 1.5,
+                fillColor: tone === "dangerTemporary" ? `url(#${STRIPES_PATTERN_ID})` : colors.fill,
+                fillOpacity: tone === "dangerTemporary" ? 0.6 : 0.4,
+              };
+            },
             onEachFeature: (feature: any, layerItem: any) => {
               const category = feature?.properties?.categoria ?? "Zona de riesgo";
               const area = feature?.properties?.area_ha ?? "-";
@@ -388,6 +433,8 @@ export default function Home() {
           });
 
           layer.addTo(map);
+          addStripesPattern(map);
+          userMarker.bringToFront();
 
           if (layer.getBounds && layer.getBounds().isValid()) {
             map.fitBounds(layer.getBounds().pad(0.2));
