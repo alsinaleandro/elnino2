@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import DangerGauge, { type DangerTone } from "./DangerGauge";
+import RiverGauge from "./RiverGauge";
 import styles from "./page.module.css";
 
 declare global {
@@ -51,6 +52,14 @@ const formatMetricValue = (value: unknown) => {
   }
 
   return String(value);
+};
+
+const toMeters = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : null);
+
+// Prefectura publica la fecha como "25/SEP/26 - 1200": se agregan los dos puntos a la hora.
+const formatMeasurementDate = (value: unknown) => {
+  const text = formatMetricValue(value);
+  return text.replace(/\b(\d{2})(\d{2})$/, "$1:$2 hs");
 };
 
 export default function Home() {
@@ -528,30 +537,25 @@ export default function Home() {
                   <h2 className={styles.riverTitle}>
                     Estado actual del río Paraná en el puerto Barranqueras
                   </h2>
+                  <div className={styles.riverGaugeCard}>
+                    <RiverGauge
+                      actual={toMeters(riskData.alturaActual)}
+                      alerta={toMeters(riskData.alerta)}
+                      evacuacion={toMeters(riskData.evacuacion)}
+                    />
+                  </div>
                   <div className={styles.resultGrid}>
-                    <div className={styles.metric}>
-                      <span>Altura actual</span>
-                      <strong>{formatMetricValue(riskData.alturaActual)}</strong>
-                    </div>
                     <div className={styles.metric}>
                       <span>Variación</span>
                       <strong>{formatMetricValue(riskData.variacion)}</strong>
                     </div>
                     <div className={styles.metric}>
-                      <span>Período</span>
-                      <strong>{formatMetricValue(riskData.intervaloHoras)}</strong>
+                      <span>Fecha y hora de última medición</span>
+                      <strong>{formatMeasurementDate(riskData.fechaHoraActual)}</strong>
                     </div>
                     <div className={styles.metric}>
                       <span>Estado</span>
                       <strong>{formatMetricValue(riskData.tendencia)}</strong>
-                    </div>
-                    <div className={styles.metric}>
-                      <span>Alerta</span>
-                      <strong>{formatMetricValue(riskData.alerta)}</strong>
-                    </div>
-                    <div className={styles.metric}>
-                      <span>Evacuación</span>
-                      <strong>{formatMetricValue(riskData.evacuacion)}</strong>
                     </div>
                   </div>
                 </>

@@ -35,8 +35,12 @@
   transition: all 0.2s ease;
 }
 
-.tab:hover {
-  background: rgba(148, 163, 184, 0.08);
+/* Solo con mouse: en pantallas táctiles :hover queda "pegado" tras tocar la pestaña y
+   tapaba el fondo oscuro de la pestaña activa. */
+@media (hover: hover) {
+  .tab:not(.tabActive):hover {
+    background: rgba(148, 163, 184, 0.08);
+  }
 }
 
 .tabActive {
@@ -247,6 +251,54 @@
   font-weight: 600;
   line-height: 1.35;
   color: #111827;
+}
+
+.riverGaugeCard {
+  padding: 12px 8px 6px;
+  margin-bottom: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.riverGauge {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+}
+
+.riverWater {
+  transition: y 0.8s ease, height 0.8s ease;
+}
+
+.riverTick {
+  font-size: 11px;
+  fill: #6b7280;
+}
+
+.riverMarkerLabel {
+  font-size: 11px;
+  fill: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.riverMarkerValue,
+.riverMarkerValueStrong {
+  font-size: 15px;
+  font-weight: 700;
+  fill: #111827;
+}
+
+.riverMarkerValueStrong {
+  font-size: 17px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .riverWater {
+    transition: none;
+  }
 }
 
 .resultGrid {
