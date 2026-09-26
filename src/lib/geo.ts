@@ -125,18 +125,35 @@ function geometryContainsPoint(geometry: GeoJsonGeometry, point: PointTuple): bo
   return false;
 }
 
+type FeatureMatch = { id?: string | number; name?: string; properties?: Record<string, unknown> };
+
+// Muchas capas (como riesgo_hidrico_AMGR_todas) guardan el id dentro de properties y no
+// tienen nombre: en ese caso name queda vacío y quien consume usa las properties.
+function describeFeature(feature: GeoJsonFeature): FeatureMatch {
+  const properties = feature.properties ?? {};
+  const propertyId = typeof properties.id === "string" || typeof properties.id === "number" ? properties.id : undefined;
+  const name =
+    typeof properties.name === "string"
+      ? properties.name
+      : typeof properties.label === "string"
+        ? properties.label
+        : undefined;
+
+  return { id: feature.id ?? propertyId, name, properties };
+}
+
 export function findMatchingFeatures(geojson: unknown, point: unknown) {
   const normalizedPoint = normalizePoint(point);
 
   if (!normalizedPoint) {
-    return [] as Array<{ id?: string | number; name?: string; properties?: Record<string, unknown> }>;
+    return [] as FeatureMatch[];
   }
 
   if (!geojson || typeof geojson !== "object") {
-    return [] as Array<{ id?: string | number; name?: string; properties?: Record<string, unknown> }>;
+    return [] as FeatureMatch[];
   }
 
-  const matches: Array<{ id?: string | number; name?: string; properties?: Record<string, unknown> }> = [];
+  const matches: FeatureMatch[] = [];
 
   if ("type" in geojson && geojson.type === "FeatureCollection") {
     const features = (geojson as GeoJsonFeatureCollection).features ?? [];
@@ -148,18 +165,7 @@ export function findMatchingFeatures(geojson: unknown, point: unknown) {
 
       const geometry = feature.geometry;
       if (geometry && geometryContainsPoint(geometry, normalizedPoint)) {
-        const name =
-          typeof feature.properties?.name === "string"
-            ? feature.properties.name
-            : typeof feature.properties?.label === "string"
-              ? feature.properties.label
-              : `Feature ${feature.id ?? "unknown"}`;
-
-        matches.push({
-          id: feature.id,
-          name,
-          properties: feature.properties ?? {},
-        });
+        matches.push(describeFeature(feature));
       }
     });
 
@@ -169,14 +175,7 @@ export function findMatchingFeatures(geojson: unknown, point: unknown) {
   if ("type" in geojson && geojson.type === "Feature") {
     const feature = geojson as GeoJsonFeature;
     if (feature.geometry && geometryContainsPoint(feature.geometry, normalizedPoint)) {
-      const name =
-        typeof feature.properties?.name === "string"
-          ? feature.properties.name
-          : typeof feature.properties?.label === "string"
-            ? feature.properties.label
-            : `Feature ${feature.id ?? "unknown"}`;
-
-      return [{ id: feature.id, name, properties: feature.properties ?? {} }];
+      return [describeFeature(feature)];
     }
 
     return [];

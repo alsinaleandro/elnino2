@@ -184,7 +184,7 @@ export default function Home() {
         setGeoLayer({ loading: true, error: null, matches: [] });
 
         const response = await fetch(
-          `/api/geo/contains?lng=${longitude}&lat=${latitude}&file=public/data/riesgo_hidrico_AMGR_todas.geojson`,
+          `/api/geo/contains?lng=${longitude}&lat=${latitude}`,
         );
 
         const payload = await response.json();
@@ -381,9 +381,7 @@ export default function Home() {
                         ? match.properties.categoria
                         : "Zona de riesgo";
                       const area = match.properties?.area_ha ?? "-";
-                      const layerName = match.name && match.name !== "Feature unknown"
-                        ? match.name
-                        : category;
+                      const layerName = match.name || category;
 
                       return (
                         <div key={`${match.id ?? index}`} className={styles.geoMatch}>

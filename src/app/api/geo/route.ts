@@ -5,7 +5,7 @@ export async function GET() {
     success: true,
     endpoints: [
       "/api/geo/contains",
-      "/api/geo/contains?lng=-74.01&lat=40.71&file=public/data/sample-layer.geojson",
+      "/api/geo/contains?lng=-58.98&lat=-27.46",
     ],
   });
 }

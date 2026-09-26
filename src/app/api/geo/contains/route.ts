@@ -1,26 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { findMatchingFeatures, normalizePoint } from "@/lib/geo";
 
-function resolveGeoJson(filePath?: string | null) {
-  if (!filePath) {
-    return null;
-  }
+// Capa fija: no se acepta una ruta desde la request para no exponer archivos del servidor.
+const LAYER_PATH = path.join(process.cwd(), "public/data/riesgo_hidrico_AMGR_todas.geojson");
 
-  const projectRoot = process.cwd();
-  const resolved = path.resolve(projectRoot, filePath.replace(/^\.?\/?/, ""));
-  const raw = readFileSync(resolved, "utf8");
-  return JSON.parse(raw);
+// Se lee y parsea una sola vez; las consultas siguientes usan la copia en memoria.
+let layerPromise: Promise<unknown> | null = null;
+
+function loadLayer() {
+  layerPromise ??= readFile(LAYER_PATH, "utf8")
+    .then((raw) => JSON.parse(raw) as unknown)
+    .catch((error) => {
+      layerPromise = null;
+      throw error;
+    });
+
+  return layerPromise;
+}
+
+function errorResponse(error: unknown, fallback: string) {
+  console.error("[geo/contains]", error);
+
+  return NextResponse.json(
+    {
+      success: false,
+      error: error instanceof Error ? error.message : fallback,
+    },
+    { status: 500 },
+  );
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const lng = Number(searchParams.get("lng"));
   const lat = Number(searchParams.get("lat"));
-  const file = searchParams.get("file");
 
-  if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
+  if (!searchParams.has("lng") || !searchParams.has("lat") || !Number.isFinite(lng) || !Number.isFinite(lat)) {
     return NextResponse.json(
       {
         success: false,
@@ -30,61 +47,52 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const point = { type: "Point", coordinates: [lng, lat] };
-  const geojson = resolveGeoJson(file) ?? null;
+  try {
+    const point = { type: "Point", coordinates: [lng, lat] };
+    const matches = findMatchingFeatures(await loadLayer(), point);
 
-  if (!geojson) {
+    return NextResponse.json({
+      success: true,
+      point,
+      inside: matches.length > 0,
+      matches,
+    });
+  } catch (error) {
+    return errorResponse(error, "No se pudo cargar la capa de riesgo.");
+  }
+}
+
+export async function POST(request: NextRequest) {
+  let body: Record<string, unknown>;
+
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: "No se encontró un archivo GeoJSON. Usa el parámetro file o envía geojson en el body.",
+        error: "El cuerpo de la petición debe ser JSON válido.",
       },
       { status: 400 },
     );
   }
 
-  const matches = findMatchingFeatures(geojson, point);
+  const point = normalizePoint(body?.point ?? null);
 
-  return NextResponse.json({
-    success: true,
-    point,
-    inside: matches.length > 0,
-    matches,
-  });
-}
+  if (!point) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "El punto debe estar en formato GeoJSON Point, por ejemplo { type: 'Point', coordinates: [lng, lat] }.",
+      },
+      { status: 400 },
+    );
+  }
 
-export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as Record<string, unknown>;
-    const rawPoint = body?.point ?? null;
-    const geojson = (body?.geojson ?? body?.layer ?? body?.data ?? null) as unknown;
-    const file = typeof body?.file === "string" ? body.file : null;
-
-    const point = normalizePoint(rawPoint);
-
-    if (!point) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "El punto debe estar en formato GeoJSON Point, por ejemplo { type: 'Point', coordinates: [lng, lat] }.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const resolvedGeojson = geojson ?? resolveGeoJson(file);
-
-    if (!resolvedGeojson) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Debes enviar un geojson o un file con una capa GeoJSON.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const matches = findMatchingFeatures(resolvedGeojson, point);
+    // Se puede enviar una capa propia en el body; si no, se usa la capa de riesgo.
+    const geojson = body?.geojson ?? body?.layer ?? body?.data ?? (await loadLayer());
+    const matches = findMatchingFeatures(geojson, { type: "Point", coordinates: point });
 
     return NextResponse.json({
       success: true,
@@ -93,15 +101,6 @@ export async function POST(request: NextRequest) {
       matches,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "No se pudo procesar la consulta geoespacial.";
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: message,
-      },
-      { status: 400 },
-    );
+    return errorResponse(error, "No se pudo procesar la consulta geoespacial.");
   }
 }
