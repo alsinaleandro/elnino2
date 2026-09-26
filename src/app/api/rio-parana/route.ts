@@ -162,28 +162,55 @@ async function fetchSource(attempts = 3) {
   }
 }
 
+// Prefectura publica alturas cada 12 h y limita las peticiones repetidas, así que el HTML se
+// guarda en memoria. Si una actualización falla, se sirve la última copia buena mientras no
+// sea demasiado vieja.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const STALE_MAX_MS = 24 * 60 * 60 * 1000;
+
+let cachedPage: { html: string; fetchedAt: number } | null = null;
+let pendingRefresh: Promise<{ html: string; fetchedAt: number }> | null = null;
+
+async function refreshPage() {
+  const response = await fetchSource();
+
+  if (!response.ok) {
+    throw new Error(`No se pudo obtener la página de la Prefectura Naval (HTTP ${response.status}).`);
+  }
+
+  cachedPage = { html: await response.text(), fetchedAt: Date.now() };
+  return cachedPage;
+}
+
+async function getPage() {
+  if (cachedPage && Date.now() - cachedPage.fetchedAt < CACHE_TTL_MS) {
+    return { ...cachedPage, stale: false };
+  }
+
+  // Visitas simultáneas comparten una sola petición a Prefectura.
+  pendingRefresh ??= refreshPage().finally(() => {
+    pendingRefresh = null;
+  });
+
+  try {
+    return { ...(await pendingRefresh), stale: false };
+  } catch (error) {
+    if (cachedPage && Date.now() - cachedPage.fetchedAt < STALE_MAX_MS) {
+      console.warn(`[rio-parana] sirviendo copia en caché: ${describeError(error)}`);
+      return { ...cachedPage, stale: true };
+    }
+
+    throw error;
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const puerto = searchParams.get("puerto") ?? "";
   const rio = searchParams.get("rio") ?? "";
 
   try {
-    const response = await fetchSource();
-
-    if (!response.ok) {
-      console.error(`[rio-parana] Prefectura respondió HTTP ${response.status}`);
-
-      return Response.json(
-        {
-          success: false,
-          error: `No se pudo obtener la página de la Prefectura Naval (HTTP ${response.status}).`,
-          status: response.status,
-        },
-        { status: 502 },
-      );
-    }
-
-    const html = await response.text();
+    const { html, fetchedAt, stale } = await getPage();
     const row = findRiverRow(html, puerto, rio);
 
     if (!row) {
@@ -204,7 +231,8 @@ export async function GET(request: Request) {
     return Response.json({
       success: true,
       source: SOURCE_URL,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: new Date(fetchedAt).toISOString(),
+      stale,
       requested: {
         puerto,
         rio,
