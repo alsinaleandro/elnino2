@@ -301,6 +301,223 @@
   }
 }
 
+/* ---------- Pestaña Pronósticos ---------- */
+
+.rainSummaryWet,
+.rainSummaryDry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #111827;
+}
+
+.rainSummaryDry {
+  border-color: #e5e7eb;
+  background: #f8fafc;
+}
+
+.rainSummaryWet strong,
+.rainSummaryDry strong {
+  font-size: 1.15rem;
+}
+
+.rainSummaryWet strong::first-letter {
+  text-transform: uppercase;
+}
+
+.rainSummaryWet span:last-child {
+  color: #374151;
+}
+
+.rainSummaryLabel,
+.rainDetailGrid span {
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rainCard,
+.rainDetail {
+  padding: 14px 12px 10px;
+  margin-bottom: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.rainCardHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 6px;
+}
+
+.rainCardHeader h3 {
+  font-size: 1rem;
+  color: #111827;
+}
+
+.rainLegend {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #374151;
+}
+
+.rainLegend span,
+.rainDetailGrid span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rainLegend i,
+.rainDetailGrid i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.rainChart {
+  display: block;
+  width: 100%;
+}
+
+.rainColumn {
+  cursor: pointer;
+  outline: none;
+}
+
+.rainColumnHit {
+  fill: transparent;
+}
+
+.rainColumnSelected {
+  fill: rgba(42, 120, 214, 0.08);
+  stroke: rgba(42, 120, 214, 0.35);
+}
+
+.rainColumn:focus-visible .rainColumnHit,
+.rainColumn:focus-visible .rainColumnSelected {
+  stroke: #2a78d6;
+  stroke-width: 2;
+}
+
+.rainGrid {
+  stroke: #e5e7eb;
+}
+
+.rainAxis {
+  stroke: #9ca3af;
+}
+
+.rainTick,
+.rainDate {
+  font-size: 10px;
+  fill: #6b7280;
+}
+
+.rainDay,
+.rainDayActive {
+  font-size: 11px;
+  fill: #374151;
+}
+
+.rainDayActive {
+  font-weight: 700;
+  fill: #111827;
+}
+
+.rainValue {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #111827;
+}
+
+.rainProbability,
+.rainProbabilityHigh {
+  font-size: 11px;
+  fill: #6b7280;
+}
+
+.rainProbabilityHigh {
+  font-weight: 700;
+  fill: #1d4ed8;
+}
+
+.rainHint {
+  padding: 2px 4px 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.rainDetailTitle {
+  display: block;
+  margin: 0 4px 10px;
+  color: #111827;
+}
+
+.rainDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  padding: 0 4px 4px;
+}
+
+.rainDetailGrid div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rainDetailGrid strong {
+  font-size: 1.05rem;
+  color: #111827;
+}
+
+.rainNote {
+  margin: 10px 4px 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #78350f;
+  font-size: 0.85rem;
+}
+
+.rainSources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.rainSources a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .resultGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

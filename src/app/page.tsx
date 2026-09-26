@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import DangerGauge, { type DangerTone } from "./DangerGauge";
+import RainForecast from "./RainForecast";
 import RiverGauge from "./RiverGauge";
 import styles from "./page.module.css";
 
@@ -63,7 +64,7 @@ const formatMeasurementDate = (value: unknown) => {
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo">("mapa");
+  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos">("mapa");
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -445,10 +446,21 @@ export default function Home() {
           >
             Riesgo
           </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === "pronosticos" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("pronosticos")}
+            role="tab"
+            aria-selected={activeTab === "pronosticos"}
+          >
+            Pronósticos
+          </button>
         </div>
 
         <section className={styles.panel}>
-          {activeTab === "mapa" ? (
+          {activeTab === "pronosticos" ? (
+            <RainForecast />
+          ) : activeTab === "mapa" ? (
             <>
               {locationLoading ? (
                 <p className={styles.status}>Solicitando coordenadas GPS...</p>
