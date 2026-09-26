@@ -75,9 +75,12 @@
   background: #f8fafc;
 }
 
+/* El mapa ocupa el alto de pantalla que dejan libre las pestañas, márgenes y la tarjeta
+   de zona (~250px). svh = alto con la barra del navegador visible; vh queda de respaldo. */
 .map {
   width: 100%;
-  height: 380px;
+  height: calc(100vh - 250px);
+  height: calc(100svh - 250px);
   min-height: 300px;
 }
 
@@ -338,7 +341,8 @@
   }
 
   .map {
-    height: 320px;
+    height: calc(100vh - 275px);
+    height: calc(100svh - 275px);
     min-height: 280px;
   }
 

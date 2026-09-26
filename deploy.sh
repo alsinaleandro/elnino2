@@ -66,8 +66,9 @@ if ! build_and_restart; then
 fi
 
 step "Comprobando que la app responda"
+# Next tarda unos segundos en arrancar después del restart: los intentos fallidos no se muestran.
 for _ in $(seq 1 15); do
-  if curl -fsS -o /dev/null "$HEALTH_URL"; then
+  if curl -fs -o /dev/null "$HEALTH_URL"; then
     printf '\n\033[1;32m✓ %s actualizado a %s y funcionando.\033[0m\n' "$APP_NAME" "$(git log -1 --format='%h %s')"
     exit 0
   fi
