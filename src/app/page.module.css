@@ -301,6 +301,175 @@
   }
 }
 
+/* ---------- Pestaña Nubes ---------- */
+
+.cloudsCard {
+  padding: 14px 12px 12px;
+  margin-bottom: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.cloudsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 0 4px 10px;
+}
+
+.cloudsHeader h3 {
+  font-size: 1rem;
+  color: #111827;
+}
+
+.cloudsTime {
+  font-size: 0.8rem;
+  color: #374151;
+  font-variant-numeric: tabular-nums;
+}
+
+.cloudsMapWrap,
+.windyWrap {
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.cloudsMap {
+  width: 100%;
+  height: min(60svh, 460px);
+  min-height: 300px;
+}
+
+/* Con el contenedor adelante para ganarle en especificidad a leaflet.css (se carga después). */
+.cloudsMap .cityLabel {
+  padding: 1px 6px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.78);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.cloudsMap .cityLabel::before {
+  display: none;
+}
+
+.cloudsControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px 2px;
+}
+
+.cloudsPlay {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.cloudsSlider,
+.cloudsOpacity input {
+  flex: 1;
+  min-width: 0;
+  accent-color: #2a78d6;
+}
+
+.cloudsOpacity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 0;
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+.cloudsNote {
+  padding: 8px 4px 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.cloudsNote a {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.cloudDays {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cloudDay {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.cloudDay span {
+  font-size: 0.72rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cloudDay strong {
+  font-size: 1.2rem;
+  color: #111827;
+}
+
+.cloudDay em {
+  min-height: 2.4em;
+  font-size: 0.75rem;
+  font-style: normal;
+  color: #374151;
+}
+
+.cloudMeter {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #dbeafe;
+  overflow: hidden;
+}
+
+.cloudMeter i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #64748b;
+}
+
+.windyWrap {
+  margin-top: 12px;
+}
+
+.windyFrame {
+  display: block;
+  width: 100%;
+  height: min(65svh, 480px);
+  min-height: 340px;
+  border: 0;
+}
+
 /* ---------- Pestaña Pronósticos ---------- */
 
 .rainSummaryWet,

@@ -1,16 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import CloudsView from "./CloudsView";
 import DangerGauge, { DANGER_COLORS, type DangerTone } from "./DangerGauge";
+import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
 import RiverGauge from "./RiverGauge";
 import styles from "./page.module.css";
-
-declare global {
-  interface Window {
-    L?: any;
-  }
-}
 
 const normalizeRiskText = (value?: string | null) =>
   String(value ?? "")
@@ -96,7 +92,7 @@ const formatMeasurementDate = (value: unknown) => {
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos">("mapa");
+  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos" | "nubes">("mapa");
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -342,7 +338,7 @@ export default function Home() {
 
     if (activeTab !== "mapa") {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        removeMap(mapInstanceRef.current);
         mapInstanceRef.current = null;
       }
       return;
@@ -354,33 +350,14 @@ export default function Home() {
 
     let cancelled = false;
 
-    const initializeMap = () => {
-      if (cancelled || typeof window === "undefined") {
-        return;
-      }
-
-      const L = window.L;
-
-      if (!L) {
-        const cssLink = document.querySelector("link[data-leaflet-css]");
-        if (!cssLink) {
-          const link = document.createElement("link");
-          link.rel = "stylesheet";
-          link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-          link.setAttribute("data-leaflet-css", "true");
-          document.head.appendChild(link);
-        }
-
-        const script = document.createElement("script");
-        script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-        script.async = true;
-        script.onload = initializeMap;
-        document.body.appendChild(script);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const initializeMap = (L: any) => {
+      if (cancelled) {
         return;
       }
 
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        removeMap(mapInstanceRef.current);
       }
 
       const map = L.map(mapContainerRef.current, {
@@ -437,7 +414,9 @@ export default function Home() {
           userMarker.bringToFront();
 
           if (layer.getBounds && layer.getBounds().isValid()) {
-            map.fitBounds(layer.getBounds().pad(0.2));
+            // Sin animación: si el usuario cambia de pestaña durante el zoom animado, Leaflet falla
+            // al terminar la transición sobre un mapa ya eliminado.
+            map.fitBounds(layer.getBounds().pad(0.2), { animate: false });
           }
         })
         .catch(() => {
@@ -452,13 +431,19 @@ export default function Home() {
       mapInstanceRef.current = map;
     };
 
-    initializeMap();
+    loadLeaflet()
+      .then(initializeMap)
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setGeoLayer((current) => ({ ...current, error: error.message }));
+        }
+      });
 
     return () => {
       cancelled = true;
       userMarkerRef.current = null;
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        removeMap(mapInstanceRef.current);
         mapInstanceRef.current = null;
       }
     };
@@ -502,10 +487,21 @@ export default function Home() {
           >
             Pronósticos
           </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === "nubes" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("nubes")}
+            role="tab"
+            aria-selected={activeTab === "nubes"}
+          >
+            Nubes
+          </button>
         </div>
 
         <section className={styles.panel}>
-          {activeTab === "pronosticos" ? (
+          {activeTab === "nubes" ? (
+            <CloudsView />
+          ) : activeTab === "pronosticos" ? (
             <RainForecast />
           ) : activeTab === "mapa" ? (
             <>

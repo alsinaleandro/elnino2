@@ -12,7 +12,7 @@ const TIMEZONE = "America/Argentina/Cordoba";
 const OPEN_METEO_URL =
   "https://api.open-meteo.com/v1/forecast?latitude=-27.4514&longitude=-58.9867" +
   "&daily=precipitation_sum,precipitation_probability_max,precipitation_hours,weather_code," +
-  "temperature_2m_max,temperature_2m_min" +
+  "temperature_2m_max,temperature_2m_min,cloud_cover_mean" +
   `&timezone=${encodeURIComponent(TIMEZONE)}&forecast_days=7`;
 
 // Los pronósticos se actualizan pocas veces por día: se guardan 1 h en memoria y, si una fuente
@@ -29,6 +29,7 @@ type OpenMeteoDay = {
   weatherCode: number | null;
   tMin: number | null;
   tMax: number | null;
+  cloudCover: number | null;
 };
 
 type SourceResult<T> = { ok: true; data: T; fetchedAt: number; stale: boolean } | { ok: false; error: string };
@@ -145,6 +146,7 @@ async function loadOpenMeteo(): Promise<OpenMeteoDay[]> {
     weatherCode: numberAt("weather_code", index),
     tMin: numberAt("temperature_2m_min", index),
     tMax: numberAt("temperature_2m_max", index),
+    cloudCover: numberAt("cloud_cover_mean", index),
   }));
 }
 
@@ -220,6 +222,7 @@ export async function GET() {
       weatherCode: om?.weatherCode ?? null,
       tMin: om?.tMin ?? null,
       tMax: om?.tMax ?? null,
+      cloudCover: om?.cloudCover ?? null,
     };
   });
 
