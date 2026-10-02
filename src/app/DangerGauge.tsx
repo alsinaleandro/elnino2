@@ -1,13 +1,14 @@
 import { useId } from "react";
 import styles from "./page.module.css";
 
-export type DangerTone = "dangerLight" | "dangerTemporary" | "dangerSevere" | "dangerHigh" | "dangerNeutral";
+export type DangerTone = "dangerLight" | "dangerRegulated" | "dangerSevere" | "dangerHigh" | "dangerNeutral";
 
-// Sectores de menor a mayor peligro. "Temporaria" usa el mismo amarillo que "Severa" con
-// rayas: entre el verde y el amarillo no entra otro color distinguible (tampoco con daltonismo).
+// Sectores de menor a mayor peligro (Cod_Tipo 1 a 4 del KML). "Leve regulada" usa el mismo verde
+// que "Leve" con rayas: entre el verde y el amarillo no entra otro color distinguible (tampoco
+// con daltonismo).
 const SEGMENTS: Array<{ tone: DangerTone; label: string; title: string; color: string }> = [
   { tone: "dangerLight", label: "Leve", title: "Zona de restricción leve", color: "#0ca30c" },
-  { tone: "dangerTemporary", label: "Temporaria", title: "Zona de restricción severa temporaria", color: "stripes" },
+  { tone: "dangerRegulated", label: "Regulada", title: "Zona de restricción leve regulada", color: "stripes" },
   { tone: "dangerSevere", label: "Severa", title: "Zona de restricción severa", color: "#fab219" },
   { tone: "dangerHigh", label: "Prohibida", title: "Zona prohibida", color: "#d03b3b" },
 ];
@@ -16,7 +17,7 @@ const SEGMENTS: Array<{ tone: DangerTone; label: string; title: string; color: s
 // para que el contorno se distinga sobre el mapa.
 export const DANGER_COLORS: Record<DangerTone, { fill: string; stroke: string }> = {
   dangerLight: { fill: "#0ca30c", stroke: "#087a08" },
-  dangerTemporary: { fill: "#fab219", stroke: "#b7791f" },
+  dangerRegulated: { fill: "#0ca30c", stroke: "#087a08" },
   dangerSevere: { fill: "#fab219", stroke: "#b7791f" },
   dangerHigh: { fill: "#d03b3b", stroke: "#a12828" },
   dangerNeutral: { fill: "#9ca3af", stroke: "#6b7280" },
@@ -62,8 +63,8 @@ export default function DangerGauge({ tone, label }: Props) {
     >
       <defs>
         <pattern id={patternId} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="7" height="7" fill="#fab219" />
-          <rect width="3" height="7" fill="#c98500" />
+          <rect width="7" height="7" fill={DANGER_COLORS.dangerRegulated.fill} />
+          <rect width="3" height="7" fill="#9be89b" />
         </pattern>
       </defs>
 

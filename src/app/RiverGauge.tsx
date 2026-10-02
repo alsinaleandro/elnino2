@@ -1,25 +1,33 @@
 import styles from "./page.module.css";
 
 // Escala hidrométrica vertical: el agua llena la regla hasta la altura actual y las flechas
-// marcan la altura actual y los niveles de alerta y evacuación.
+// marcan la altura actual, los niveles de alerta y evacuación y el terreno del usuario (un muñeco
+// parado a esa altura). Todo en la escala del hidrómetro de Barranqueras.
 
 type Props = {
   actual: number | null;
   alerta: number | null;
   evacuacion: number | null;
+  // Rango de la cota del terreno del usuario, ya convertido a la escala del hidrómetro.
+  // min null = "menos de max"; max null = "más de min".
+  user?: { min: number | null; max: number | null } | null;
 };
 
 type Marker = {
   key: string;
   label: string;
   value: number;
+  valueText?: string;
   fill: string;
   stroke: string;
   strong?: boolean;
 };
 
+const USER_COLOR = "#6b4423";
+const USER_STROKE = "#4a2f18";
+
 const WIDTH = 300;
-const HEIGHT = 280;
+const HEIGHT = 300;
 const TOP = 16;
 const BOTTOM = HEIGHT - 20;
 const STAFF_X = 64;
@@ -31,7 +39,9 @@ const ARROW_STAGGER = 18;
 const LABEL_X = ARROW_X + ARROW_LENGTH + ARROW_STAGGER * 2 + 22;
 const LABEL_MIN_GAP = 36;
 
-const formatMeters = (value: number) => `${value.toFixed(2)} m`;
+const formatNumber = (value: number) =>
+  value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatMeters = (value: number) => `${formatNumber(value)} m`;
 
 // Separa verticalmente las etiquetas que quedarían encimadas (p. ej. alerta 6.00 y evacuación 6.50),
 // manteniendo el orden; la flecha sigue apuntando a la altura exacta.
@@ -55,15 +65,45 @@ function spreadLabels(positions: number[]) {
   return result;
 }
 
-export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
+function userMarker(user: Props["user"]): Marker | null {
+  if (!user || (user.min === null && user.max === null)) return null;
+  const valueText =
+    user.min === null
+      ? `menos de ${formatMeters(user.max!)}`
+      : user.max === null
+        ? `más de ${formatMeters(user.min)}`
+        : `${formatNumber(user.min)} a ${formatMeters(user.max)}`;
+  // El muñeco se para en el límite inferior del rango (lo más prudente); si solo se conoce el
+  // techo ("menos de"), en el techo.
+  return { key: "user", label: "Tu terreno", value: user.min ?? user.max!, valueText, fill: USER_COLOR, stroke: USER_STROKE };
+}
+
+// Muñeco de palo con los pies en (x, y). Se dibuja dos veces: un trazo blanco ancho de fondo
+// para que se lea sobre el agua y la franja marrón, y el trazo oscuro encima.
+function StickFigure({ x, y }: { x: number; y: number }) {
+  const body = `M ${x} ${y - 17} V ${y - 8} M ${x - 6} ${y - 14} H ${x + 6} M ${x} ${y - 8} L ${x - 5} ${y} M ${x} ${y - 8} L ${x + 5} ${y}`;
+  return (
+    <g strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <path d={body} stroke="#ffffff" strokeWidth="5" />
+      <circle cx={x} cy={y - 21} r="4" stroke="#ffffff" strokeWidth="5" />
+      <path d={body} stroke="#111827" strokeWidth="2" />
+      <circle cx={x} cy={y - 21} r="4" stroke="#111827" strokeWidth="2" fill="#ffffff" />
+    </g>
+  );
+}
+
+export default function RiverGauge({ actual, alerta, evacuacion, user }: Props) {
+  const ground = userMarker(user);
   const markers: Marker[] = [
+    ground,
     evacuacion !== null && { key: "evacuacion", label: "Evacuación", value: evacuacion, fill: "#d03b3b", stroke: "#a12828" },
     alerta !== null && { key: "alerta", label: "Alerta", value: alerta, fill: "#fab219", stroke: "#b7791f" },
     actual !== null && { key: "actual", label: "Altura actual", value: actual, fill: "#2563eb", stroke: "#1d4ed8", strong: true },
   ].filter((marker): marker is Marker => Boolean(marker));
 
   // La escala arranca en 0 y llega al metro entero siguiente al valor más alto.
-  const top = Math.max(1, Math.ceil(Math.max(...markers.map((marker) => marker.value), 0) + 0.5));
+  const highest = Math.max(...markers.map((marker) => marker.value), user?.max ?? 0, 0);
+  const top = Math.max(1, Math.ceil(highest + 0.5));
   const toY = (meters: number) => BOTTOM - (Math.min(Math.max(meters, 0), top) / top) * (BOTTOM - TOP);
   const tickStep = top > 10 ? 2 : 1;
   const ticks = Array.from({ length: Math.floor(top / tickStep) + 1 }, (_, i) => i * tickStep);
@@ -80,7 +120,9 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
     arrowXs.push(collides ? arrowXs[index - 1] + ARROW_STAGGER : ARROW_X);
   });
 
-  const summary = markers.map((marker) => `${marker.label}: ${formatMeters(marker.value)}`).join(", ");
+  const summary = markers
+    .map((marker) => `${marker.label}: ${marker.valueText ?? formatMeters(marker.value)}`)
+    .join(", ");
 
   return (
     <svg
@@ -103,6 +145,31 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
         />
       ) : null}
 
+      {/* Terreno del usuario: franja con el rango de la cota, línea de suelo y muñeco */}
+      {ground && user ? (
+        <g>
+          {user.min !== null && user.max !== null ? (
+            <rect
+              x={STAFF_X}
+              y={toY(user.max)}
+              width={STAFF_WIDTH}
+              height={toY(user.min) - toY(user.max)}
+              fill={USER_COLOR}
+              opacity="0.25"
+            />
+          ) : null}
+          <line
+            x1={STAFF_X - 2}
+            x2={STAFF_X + STAFF_WIDTH + 2}
+            y1={toY(ground.value)}
+            y2={toY(ground.value)}
+            stroke={USER_COLOR}
+            strokeWidth="3"
+          />
+          <StickFigure x={STAFF_X + STAFF_WIDTH / 2} y={toY(ground.value) - 1.5} />
+        </g>
+      ) : null}
+
       {ticks.map((meters) => (
         <g key={meters}>
           <line x1={STAFF_X - 6} x2={STAFF_X} y1={toY(meters)} y2={toY(meters)} stroke="#94a3b8" />
@@ -120,8 +187,8 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
 
         return (
           <g key={marker.key}>
-            <title>{`${marker.label}: ${formatMeters(marker.value)}`}</title>
-            {marker.key !== "actual" ? (
+            <title>{`${marker.label}: ${marker.valueText ?? formatMeters(marker.value)}`}</title>
+            {marker.key !== "actual" && marker.key !== "user" ? (
               <line
                 x1={STAFF_X}
                 x2={STAFF_X + STAFF_WIDTH}
@@ -157,7 +224,7 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
               dominantBaseline="middle"
               className={marker.strong ? styles.riverMarkerValueStrong : styles.riverMarkerValue}
             >
-              {formatMeters(marker.value)}
+              {marker.valueText ?? formatMeters(marker.value)}
             </text>
           </g>
         );

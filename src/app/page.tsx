@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import CloudsView from "./CloudsView";
+import CotaCard from "./CotaCard";
 import DangerGauge, { DANGER_COLORS, type DangerTone } from "./DangerGauge";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
 import RiverGauge from "./RiverGauge";
+import { COTA_LEVELS, type CotaMatch } from "@/lib/cotas";
 import styles from "./page.module.css";
 
 const normalizeRiskText = (value?: string | null) =>
@@ -24,12 +26,12 @@ const getDangerLevel = (category?: string | null): { label: string; tone: Danger
     return { label: "ZONA PROHIBIDA", tone: "dangerHigh" };
   }
 
-  if (normalized.includes("RESTRICCION SEVERA TEMPORARIA")) {
-    return { label: "ZONA DE RESTRICCION SEVERA TEMPORARIA", tone: "dangerTemporary" };
-  }
-
   if (normalized.includes("RESTRICCION SEVERA")) {
     return { label: "ZONA DE RESTRICCION SEVERA", tone: "dangerSevere" };
+  }
+
+  if (normalized.includes("RESTRICCION LEVE REGULADA")) {
+    return { label: "ZONA DE RESTRICCION LEVE REGULADA", tone: "dangerRegulated" };
   }
 
   if (normalized.includes("RESTRICCION LEVE")) {
@@ -39,12 +41,15 @@ const getDangerLevel = (category?: string | null): { label: string; tone: Danger
   return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
 };
 
-const STRIPES_PATTERN_ID = "zona-temporaria-rayas";
+// Lo mínimo que se usa de una capa de Leaflet para mostrarla u ocultarla.
+type LeafletLayer = { addTo(map: unknown): unknown; remove(): unknown };
+
+const STRIPES_PATTERN_ID = "zona-regulada-rayas";
 
 // Leaflet dibuja los polígonos en un <svg> propio: se le agrega el patrón de rayas amarillas
-// que usa la zona "severa temporaria" como relleno.
-function addStripesPattern(map: { getPanes(): { overlayPane: HTMLElement } }) {
-  const svg: SVGSVGElement | null = map.getPanes().overlayPane.querySelector("svg");
+// que usa la zona "leve regulada" como relleno.
+function addStripesPattern(pane: HTMLElement) {
+  const svg: SVGSVGElement | null = pane.querySelector("svg");
   if (!svg || svg.querySelector(`#${STRIPES_PATTERN_ID}`)) {
     return;
   }
@@ -58,8 +63,8 @@ function addStripesPattern(map: { getPanes(): { overlayPane: HTMLElement } }) {
   pattern.setAttribute("patternUnits", "userSpaceOnUse");
   pattern.setAttribute("patternTransform", "rotate(45)");
 
-  const { fill, stroke } = DANGER_COLORS.dangerTemporary;
-  for (const [x, width, color] of [[0, 10, fill], [0, 4, stroke]] as const) {
+  const { fill } = DANGER_COLORS.dangerRegulated;
+  for (const [x, width, color] of [[0, 10, fill], [0, 4, "#9be89b"]] as const) {
     const rect = document.createElementNS(ns, "rect");
     rect.setAttribute("x", String(x));
     rect.setAttribute("width", String(width));
@@ -112,9 +117,20 @@ export default function Home() {
     error: null,
     matches: [],
   });
+  const [userCota, setUserCota] = useState<{ loading: boolean; error: string | null; cota: CotaMatch | null }>({
+    loading: false,
+    error: null,
+    cota: null,
+  });
+  // Capas visibles en la pestaña Mapa (casilleros tipo GIS).
+  const [showRiskLayer, setShowRiskLayer] = useState(true);
+  const [showCotasLayer, setShowCotasLayer] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
+  const riskLayerRef = useRef<LeafletLayer | null>(null);
+  const cotasLayerRef = useRef<LeafletLayer | null>(null);
+  const layerVisibilityRef = useRef({ risk: true, cotas: false });
   const matchedRiskCategory =
     geoLayer.matches[0]?.properties?.categoria != null
       ? String(geoLayer.matches[0].properties?.categoria)
@@ -317,7 +333,33 @@ export default function Home() {
       }
     }
 
+    // Cota del terreno en la misma posición (mapas de cotas, /api/geo/cota).
+    async function loadCota() {
+      try {
+        setUserCota((current) => (current.cota ? current : { loading: true, error: null, cota: null }));
+        const response = await fetch(`/api/geo/cota?lng=${longitude}&lat=${latitude}`);
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "No se pudo consultar el mapa de cotas.");
+        }
+
+        if (!cancelled) {
+          setUserCota({ loading: false, error: null, cota: payload.cota ?? null });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setUserCota({
+            loading: false,
+            error: error instanceof Error ? error.message : "No se pudo consultar el mapa de cotas.",
+            cota: null,
+          });
+        }
+      }
+    }
+
     loadGeoLayer();
+    loadCota();
 
     return () => {
       cancelled = true;
@@ -370,7 +412,14 @@ export default function Home() {
         maxZoom: 15,
       }).addTo(map);
 
+      // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
+      // cotas abajo, zonas de riesgo encima y el marcador del usuario arriba de todo.
+      map.createPane("cotasPane").style.zIndex = "410";
+      map.createPane("riskPane").style.zIndex = "420";
+      map.createPane("userPane").style.zIndex = "650";
+
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
+        pane: "userPane",
         // Azul con borde blanco: se distingue sobre las zonas roja, amarilla y verde.
         radius: 9,
         color: "#ffffff",
@@ -382,24 +431,25 @@ export default function Home() {
       userMarker.bindPopup("Tu ubicación actual");
       userMarkerRef.current = userMarker;
 
-      fetch("/data/riesgo_hidrico_AMGR_todas.geojson")
+      fetch("/api/geo/capa")
         .then((response) => response.json())
         .then((geojsonData) => {
           if (cancelled) {
             return;
           }
 
-          // Mismos colores que el indicador de la pestaña Riesgo. La zona "severa temporaria" usa un
+          // Mismos colores que el indicador de la pestaña Riesgo. La zona "leve regulada" usa un
           // relleno amarillo rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
+            pane: "riskPane",
             style: (feature?: { properties?: { categoria?: string } }) => {
               const tone = getDangerLevel(feature?.properties?.categoria).tone;
               const colors = DANGER_COLORS[tone];
               return {
                 color: colors.stroke,
                 weight: 1.5,
-                fillColor: tone === "dangerTemporary" ? `url(#${STRIPES_PATTERN_ID})` : colors.fill,
-                fillOpacity: tone === "dangerTemporary" ? 0.6 : 0.4,
+                fillColor: tone === "dangerRegulated" ? `url(#${STRIPES_PATTERN_ID})` : colors.fill,
+                fillOpacity: tone === "dangerRegulated" ? 0.5 : 0.4,
               };
             },
             onEachFeature: (feature: any, layerItem: any) => {
@@ -409,9 +459,11 @@ export default function Home() {
             },
           });
 
-          layer.addTo(map);
-          addStripesPattern(map);
-          userMarker.bringToFront();
+          riskLayerRef.current = layer;
+          if (layerVisibilityRef.current.risk) {
+            layer.addTo(map);
+            addStripesPattern(map.getPane("riskPane"));
+          }
 
           if (layer.getBounds && layer.getBounds().isValid()) {
             // Sin animación: si el usuario cambia de pestaña durante el zoom animado, Leaflet falla
@@ -425,6 +477,42 @@ export default function Home() {
               ...current,
               error: "No se pudo cargar la capa GeoJSON para mostrarla en el mapa.",
             }));
+          }
+        });
+
+      fetch("/api/geo/cotas")
+        .then((response) => response.json())
+        .then((geojsonData) => {
+          if (cancelled) {
+            return;
+          }
+
+          const layer = L.geoJSON(geojsonData, {
+            pane: "cotasPane",
+            style: (feature?: { properties?: { nivel?: number } }) => {
+              const color = COTA_LEVELS[feature?.properties?.nivel ?? 0]?.color ?? "#6b7280";
+              // Borde blanco fino: separa rangos vecinos de tonos parecidos.
+              return { color: "#ffffff", weight: 1, opacity: 0.7, fillColor: color, fillOpacity: 0.7 };
+            },
+            onEachFeature: (
+              feature: { properties?: Record<string, unknown> },
+              layerItem: { bindPopup: (html: string) => void },
+            ) => {
+              const props = feature.properties ?? {};
+              layerItem.bindPopup(
+                `<strong>Cota del terreno: ${props.rango ?? "-"}</strong><br>Hidrómetro Barranqueras: ${props.altura_hidrometro_barranqueras ?? "-"}`,
+              );
+            },
+          });
+
+          cotasLayerRef.current = layer;
+          if (layerVisibilityRef.current.cotas) {
+            layer.addTo(map);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setGeoLayer((current) => ({ ...current, error: "No se pudo cargar el mapa de cotas." }));
           }
         });
 
@@ -442,12 +530,35 @@ export default function Home() {
     return () => {
       cancelled = true;
       userMarkerRef.current = null;
+      riskLayerRef.current = null;
+      cotasLayerRef.current = null;
       if (mapInstanceRef.current) {
         removeMap(mapInstanceRef.current);
         mapInstanceRef.current = null;
       }
     };
   }, [activeTab, hasLocation]);
+
+  // Mostrar u ocultar capas sin volver a crear el mapa.
+  useEffect(() => {
+    layerVisibilityRef.current = { risk: showRiskLayer, cotas: showCotasLayer };
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const layers: Array<[LeafletLayer | null, boolean]> = [
+      [riskLayerRef.current, showRiskLayer],
+      [cotasLayerRef.current, showCotasLayer],
+    ];
+    for (const [layer, visible] of layers) {
+      if (!layer) continue;
+      if (visible && !map.hasLayer(layer)) layer.addTo(map);
+      if (!visible && map.hasLayer(layer)) layer.remove();
+    }
+
+    if (showRiskLayer && riskLayerRef.current) {
+      addStripesPattern(map.getPane("riskPane"));
+    }
+  }, [showRiskLayer, showCotasLayer]);
 
   useEffect(() => {
     if (location && userMarkerRef.current) {
@@ -527,9 +638,41 @@ export default function Home() {
               ) : null}
 
               {activeTab === "mapa" && location ? (
-                <div className={styles.mapWrap}>
-                  <div ref={mapContainerRef} className={styles.map} />
-                </div>
+                <>
+                  <fieldset className={styles.layerToggles}>
+                    <legend>Capas</legend>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showRiskLayer}
+                        onChange={(event) => setShowRiskLayer(event.target.checked)}
+                      />
+                      Zonas de riesgo
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showCotasLayer}
+                        onChange={(event) => setShowCotasLayer(event.target.checked)}
+                      />
+                      Mapa de cotas
+                    </label>
+                  </fieldset>
+                  <div className={styles.mapWrap}>
+                    <div ref={mapContainerRef} className={styles.map} />
+                  </div>
+                  {showCotasLayer ? (
+                    <div className={styles.cotasLegend} aria-label="Referencias del mapa de cotas">
+                      <span className={styles.cotasLegendTitle}>Cota del terreno (MOP)</span>
+                      {COTA_LEVELS.map((level) => (
+                        <span key={level.file} className={styles.cotasLegendItem}>
+                          <i style={{ background: level.color }} />
+                          {level.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : null}
 
               {geoLayer.loading ? <p className={styles.status}>Verificando la capa de riesgo...</p> : null}
@@ -560,7 +703,7 @@ export default function Home() {
                     })}
                   </div>
                 ) : (
-                  <p className={styles.geoNeutral}>Tu ubicación no coincide con ninguna zona de la capa riesgo_hidrico_AMGR_todas.geojson.</p>
+                  <p className={styles.geoNeutral}>Tu ubicación no coincide con ninguna zona de riesgo hídrico.</p>
                 )
               ) : null}
             </>
@@ -587,6 +730,13 @@ export default function Home() {
                 />
               </div>
 
+              <CotaCard
+                cota={userCota.cota}
+                loading={locationLoading || userCota.loading}
+                error={userCota.error}
+                riverHeight={riskData ? toMeters(riskData.alturaActual) : null}
+              />
+
               {riskData ? (
                 <>
                   <h2 className={styles.riverTitle}>
@@ -597,6 +747,7 @@ export default function Home() {
                       actual={toMeters(riskData.alturaActual)}
                       alerta={toMeters(riskData.alerta)}
                       evacuacion={toMeters(riskData.evacuacion)}
+                      user={userCota.cota ? { min: userCota.cota.hidrometroMin, max: userCota.cota.hidrometroMax } : null}
                     />
                   </div>
                   <div className={styles.resultGrid}>

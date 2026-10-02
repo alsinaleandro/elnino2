@@ -15,8 +15,15 @@ export type GeoJsonMultiPolygon = {
   coordinates: PointTuple[][][];
 };
 
+// Las líneas (canales, cauces) no tienen superficie: nunca "contienen" un punto.
+export type GeoJsonLineString = {
+  type: "LineString";
+  coordinates: PointTuple[];
+};
+
 export type GeoJsonGeometry =
   | GeoJsonPoint
+  | GeoJsonLineString
   | GeoJsonPolygon
   | GeoJsonMultiPolygon
   | { type: "GeometryCollection"; geometries: GeoJsonGeometry[] }
@@ -127,7 +134,7 @@ function geometryContainsPoint(geometry: GeoJsonGeometry, point: PointTuple): bo
 
 type FeatureMatch = { id?: string | number; name?: string; properties?: Record<string, unknown> };
 
-// Muchas capas (como riesgo_hidrico_AMGR_todas) guardan el id dentro de properties y no
+// Muchas capas (como la de riesgos hídricos) guardan el id dentro de properties y no
 // tienen nombre: en ese caso name queda vacío y quien consume usa las properties.
 function describeFeature(feature: GeoJsonFeature): FeatureMatch {
   const properties = feature.properties ?? {};

@@ -1,24 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { findMatchingFeatures, normalizePoint } from "@/lib/geo";
+import { getRiskLayer } from "@/lib/riskLayer";
 
-// Capa fija: no se acepta una ruta desde la request para no exponer archivos del servidor.
-const LAYER_PATH = path.join(process.cwd(), "public/data/riesgo_hidrico_AMGR_todas.geojson");
-
-// Se lee y parsea una sola vez; las consultas siguientes usan la copia en memoria.
-let layerPromise: Promise<unknown> | null = null;
-
-function loadLayer() {
-  layerPromise ??= readFile(LAYER_PATH, "utf8")
-    .then((raw) => JSON.parse(raw) as unknown)
-    .catch((error) => {
-      layerPromise = null;
-      throw error;
-    });
-
-  return layerPromise;
-}
+// Capa fija (KML de riesgos hídricos, ver src/lib/riskLayer.ts): no se acepta una ruta desde la
+// request para no exponer archivos del servidor. Se procesa una vez y queda en memoria.
+const loadLayer = getRiskLayer;
 
 function errorResponse(error: unknown, fallback: string) {
   console.error("[geo/contains]", error);
