@@ -9,7 +9,7 @@
 { "type": "Feature", "properties": { "fid": 4, "id": 2, "nombre": "Los Teros", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.959483210248415, -27.439501411142075 ] } },
 { "type": "Feature", "properties": { "fid": 5, "id": 2, "nombre": "Vargas", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.964587199412065, -27.450368894450524 ] } },
 { "type": "Feature", "properties": { "fid": 6, "id": 1, "nombre": "Los Lirios - Prosperidad", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.963618675518866, -27.455365232190502 ] } },
-{ "type": "Feature", "properties": { "fid": 7, "id": 2, "nombre": "Mujeres Argentina", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.938310446591025, -27.468411242527509 ] } },
+{ "type": "Feature", "properties": { "fid": 7, "id": 2, "nombre": "Mujeres Argentinas", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.938310446591025, -27.468411242527509 ] } },
 { "type": "Feature", "properties": { "fid": 8, "id": 1, "nombre": "Obra de Control Rio Negro-Barranqueras", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.898724556024959, -27.456502535808539 ] } },
 { "type": "Feature", "properties": { "fid": 9, "id": 2, "nombre": "El Japones", "clas": "Alcantarilla" }, "geometry": { "type": "Point", "coordinates": [ -58.919595521546135, -27.464628101603196 ] } },
 { "type": "Feature", "properties": { "fid": 10, "id": 0, "nombre": "La Toma", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.917682163432552, -27.467042519133717 ] } },
