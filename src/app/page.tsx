@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import CloudsView from "./CloudsView";
-import CotaCard from "./CotaCard";
 import DangerGauge, { DANGER_COLORS, type DangerTone } from "./DangerGauge";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
 import RiverGauge from "./RiverGauge";
-import { COTA_LEVELS, type CotaMatch } from "@/lib/cotas";
+import { COTA_LEVELS } from "@/lib/cotas";
 import styles from "./page.module.css";
 
 const normalizeRiskText = (value?: string | null) =>
@@ -44,7 +43,18 @@ const getDangerLevel = (category?: string | null): { label: string; tone: Danger
 // Lo mínimo que se usa de una capa de Leaflet para mostrarla u ocultarla.
 type LeafletLayer = { addTo(map: unknown): unknown; remove(): unknown };
 
-const STRIPES_PATTERN_ID = "zona-regulada-rayas";
+// Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
+const BOMBEO_COLORS: Record<string, string> = {
+  "Estación de Bombeo": "#0ea5e9",
+  "Obra de Control": "#f97316",
+  Alcantarilla: "#a855f7",
+};
+const DEFENSA_COLOR = "#7c2d12";
+
+const escapeHtml = (value: unknown) =>
+  String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+
+const STRIPES_PATTERN_ID ="zona-regulada-rayas";
 
 // Leaflet dibuja los polígonos en un <svg> propio: se le agrega el patrón de rayas amarillas
 // que usa la zona "leve regulada" como relleno.
@@ -117,20 +127,19 @@ export default function Home() {
     error: null,
     matches: [],
   });
-  const [userCota, setUserCota] = useState<{ loading: boolean; error: string | null; cota: CotaMatch | null }>({
-    loading: false,
-    error: null,
-    cota: null,
-  });
   // Capas visibles en la pestaña Mapa (casilleros tipo GIS).
   const [showRiskLayer, setShowRiskLayer] = useState(true);
   const [showCotasLayer, setShowCotasLayer] = useState(false);
+  const [showDefensaLayer, setShowDefensaLayer] = useState(false);
+  const [showBombeoLayer, setShowBombeoLayer] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
   const riskLayerRef = useRef<LeafletLayer | null>(null);
   const cotasLayerRef = useRef<LeafletLayer | null>(null);
-  const layerVisibilityRef = useRef({ risk: true, cotas: false });
+  const defensaLayerRef = useRef<LeafletLayer | null>(null);
+  const bombeoLayerRef = useRef<LeafletLayer | null>(null);
+  const layerVisibilityRef = useRef({ risk: true, cotas: false, defensa: false, bombeo: false });
   const matchedRiskCategory =
     geoLayer.matches[0]?.properties?.categoria != null
       ? String(geoLayer.matches[0].properties?.categoria)
@@ -333,33 +342,7 @@ export default function Home() {
       }
     }
 
-    // Cota del terreno en la misma posición (mapas de cotas, /api/geo/cota).
-    async function loadCota() {
-      try {
-        setUserCota((current) => (current.cota ? current : { loading: true, error: null, cota: null }));
-        const response = await fetch(`/api/geo/cota?lng=${longitude}&lat=${latitude}`);
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "No se pudo consultar el mapa de cotas.");
-        }
-
-        if (!cancelled) {
-          setUserCota({ loading: false, error: null, cota: payload.cota ?? null });
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setUserCota({
-            loading: false,
-            error: error instanceof Error ? error.message : "No se pudo consultar el mapa de cotas.",
-            cota: null,
-          });
-        }
-      }
-    }
-
     loadGeoLayer();
-    loadCota();
 
     return () => {
       cancelled = true;
@@ -413,9 +396,12 @@ export default function Home() {
       }).addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
-      // cotas abajo, zonas de riesgo encima y el marcador del usuario arriba de todo.
+      // cotas abajo, zonas de riesgo encima, luego defensas y estaciones de bombeo, y el
+      // marcador del usuario arriba de todo.
       map.createPane("cotasPane").style.zIndex = "410";
       map.createPane("riskPane").style.zIndex = "420";
+      map.createPane("defensaPane").style.zIndex = "430";
+      map.createPane("bombeoPane").style.zIndex = "440";
       map.createPane("userPane").style.zIndex = "650";
 
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
@@ -516,6 +502,75 @@ export default function Home() {
           }
         });
 
+      fetch("/data/capa-defensa.geojson")
+        .then((response) => response.json())
+        .then((geojsonData) => {
+          if (cancelled) {
+            return;
+          }
+
+          const layer = L.geoJSON(geojsonData, {
+            pane: "defensaPane",
+            style: () => ({ color: DEFENSA_COLOR, weight: 4, opacity: 0.9 }),
+            onEachFeature: (_feature: unknown, layerItem: { bindPopup: (html: string) => void }) => {
+              layerItem.bindPopup("<strong>Línea de defensa</strong>");
+            },
+          });
+
+          defensaLayerRef.current = layer;
+          if (layerVisibilityRef.current.defensa) {
+            layer.addTo(map);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setGeoLayer((current) => ({ ...current, error: "No se pudo cargar la capa de defensas." }));
+          }
+        });
+
+      fetch("/data/capa-estaciones-bombeo.geojson")
+        .then((response) => response.json())
+        .then((geojsonData) => {
+          if (cancelled) {
+            return;
+          }
+
+          const layer = L.geoJSON(geojsonData, {
+            pane: "bombeoPane",
+            pointToLayer: (feature: { properties?: { clas?: string } }, latlng: unknown) =>
+              L.circleMarker(latlng, {
+                pane: "bombeoPane",
+                radius: 7,
+                color: "#ffffff",
+                weight: 2,
+                fillColor: BOMBEO_COLORS[feature?.properties?.clas ?? ""] ?? "#6b7280",
+                fillOpacity: 1,
+              }),
+            onEachFeature: (
+              feature: { properties?: Record<string, unknown> },
+              layerItem: { bindPopup: (html: string) => void },
+            ) => {
+              const props = feature.properties ?? {};
+              layerItem.bindPopup(
+                `<strong>${escapeHtml(props.nombre ?? "Sin nombre")}</strong><br>${escapeHtml(props.clas ?? "-")}`,
+              );
+            },
+          });
+
+          bombeoLayerRef.current = layer;
+          if (layerVisibilityRef.current.bombeo) {
+            layer.addTo(map);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setGeoLayer((current) => ({
+              ...current,
+              error: "No se pudo cargar la capa de estaciones de bombeo.",
+            }));
+          }
+        });
+
       mapInstanceRef.current = map;
     };
 
@@ -532,6 +587,8 @@ export default function Home() {
       userMarkerRef.current = null;
       riskLayerRef.current = null;
       cotasLayerRef.current = null;
+      defensaLayerRef.current = null;
+      bombeoLayerRef.current = null;
       if (mapInstanceRef.current) {
         removeMap(mapInstanceRef.current);
         mapInstanceRef.current = null;
@@ -541,13 +598,20 @@ export default function Home() {
 
   // Mostrar u ocultar capas sin volver a crear el mapa.
   useEffect(() => {
-    layerVisibilityRef.current = { risk: showRiskLayer, cotas: showCotasLayer };
+    layerVisibilityRef.current = {
+      risk: showRiskLayer,
+      cotas: showCotasLayer,
+      defensa: showDefensaLayer,
+      bombeo: showBombeoLayer,
+    };
     const map = mapInstanceRef.current;
     if (!map) return;
 
     const layers: Array<[LeafletLayer | null, boolean]> = [
       [riskLayerRef.current, showRiskLayer],
       [cotasLayerRef.current, showCotasLayer],
+      [defensaLayerRef.current, showDefensaLayer],
+      [bombeoLayerRef.current, showBombeoLayer],
     ];
     for (const [layer, visible] of layers) {
       if (!layer) continue;
@@ -558,7 +622,7 @@ export default function Home() {
     if (showRiskLayer && riskLayerRef.current) {
       addStripesPattern(map.getPane("riskPane"));
     }
-  }, [showRiskLayer, showCotasLayer]);
+  }, [showRiskLayer, showCotasLayer, showDefensaLayer, showBombeoLayer]);
 
   useEffect(() => {
     if (location && userMarkerRef.current) {
@@ -657,6 +721,22 @@ export default function Home() {
                       />
                       Mapa de cotas
                     </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showDefensaLayer}
+                        onChange={(event) => setShowDefensaLayer(event.target.checked)}
+                      />
+                      Líneas de defensa
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showBombeoLayer}
+                        onChange={(event) => setShowBombeoLayer(event.target.checked)}
+                      />
+                      Estaciones de bombeo
+                    </label>
                   </fieldset>
                   <div className={styles.mapWrap}>
                     <div ref={mapContainerRef} className={styles.map} />
@@ -670,6 +750,25 @@ export default function Home() {
                           {level.label}
                         </span>
                       ))}
+                    </div>
+                  ) : null}
+                  {showDefensaLayer || showBombeoLayer ? (
+                    <div className={styles.cotasLegend} aria-label="Referencias de defensas y estaciones de bombeo">
+                      <span className={styles.cotasLegendTitle}>Sistema de defensa</span>
+                      {showDefensaLayer ? (
+                        <span className={styles.cotasLegendItem}>
+                          <i style={{ background: DEFENSA_COLOR, height: 4 }} />
+                          Línea de defensa
+                        </span>
+                      ) : null}
+                      {showBombeoLayer
+                        ? Object.entries(BOMBEO_COLORS).map(([label, color]) => (
+                            <span key={label} className={styles.cotasLegendItem}>
+                              <i style={{ background: color, width: 10, borderRadius: "50%" }} />
+                              {label}
+                            </span>
+                          ))
+                        : null}
                     </div>
                   ) : null}
                 </>
@@ -730,13 +829,6 @@ export default function Home() {
                 />
               </div>
 
-              <CotaCard
-                cota={userCota.cota}
-                loading={locationLoading || userCota.loading}
-                error={userCota.error}
-                riverHeight={riskData ? toMeters(riskData.alturaActual) : null}
-              />
-
               {riskData ? (
                 <>
                   <h2 className={styles.riverTitle}>
@@ -747,7 +839,6 @@ export default function Home() {
                       actual={toMeters(riskData.alturaActual)}
                       alerta={toMeters(riskData.alerta)}
                       evacuacion={toMeters(riskData.evacuacion)}
-                      user={userCota.cota ? { min: userCota.cota.hidrometroMin, max: userCota.cota.hidrometroMax } : null}
                     />
                   </div>
                   <div className={styles.resultGrid}>

@@ -1,0 +1,23 @@
+{
+"type": "FeatureCollection",
+"name": "capa-estaciones-bombeo",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "fid": 1, "id": 0, "nombre": "Oro", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -59.023147993650618, -27.418832421776322 ] } },
+{ "type": "Feature", "properties": { "fid": 2, "id": 1, "nombre": "Avalos", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.990028025150011, -27.429728451241463 ] } },
+{ "type": "Feature", "properties": { "fid": 3, "id": 2, "nombre": "Gonzalito", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.9774478227367, -27.437992803727287 ] } },
+{ "type": "Feature", "properties": { "fid": 4, "id": 2, "nombre": "Los Teros", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.959483210248415, -27.439501411142075 ] } },
+{ "type": "Feature", "properties": { "fid": 5, "id": 2, "nombre": "Vargas", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.964587199412065, -27.450368894450524 ] } },
+{ "type": "Feature", "properties": { "fid": 6, "id": 1, "nombre": "Los Lirios - Prosperidad", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.963618675518866, -27.455365232190502 ] } },
+{ "type": "Feature", "properties": { "fid": 7, "id": 2, "nombre": "Mujeres Argentina", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.938310446591025, -27.468411242527509 ] } },
+{ "type": "Feature", "properties": { "fid": 8, "id": 1, "nombre": "Obra de Control Rio Negro-Barranqueras", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.898724556024959, -27.456502535808539 ] } },
+{ "type": "Feature", "properties": { "fid": 9, "id": 2, "nombre": "El Japones", "clas": "Alcantarilla" }, "geometry": { "type": "Point", "coordinates": [ -58.919595521546135, -27.464628101603196 ] } },
+{ "type": "Feature", "properties": { "fid": 10, "id": 0, "nombre": "La Toma", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.917682163432552, -27.467042519133717 ] } },
+{ "type": "Feature", "properties": { "fid": 11, "id": 2, "nombre": "Ma. Cristina", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.91990351526298, -27.479410938824071 ] } },
+{ "type": "Feature", "properties": { "fid": 12, "id": 1, "nombre": "Clayton", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.929363465697158, -27.494103770058786 ] } },
+{ "type": "Feature", "properties": { "fid": 13, "id": 0, "nombre": "Bo. Los Molinos", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.941975284752004, -27.5031642885527 ] } },
+{ "type": "Feature", "properties": { "fid": 14, "id": 2, "nombre": "Barrio San José - Araza", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.94794407631224, -27.519067574277976 ] } },
+{ "type": "Feature", "properties": { "fid": 15, "id": 0, "nombre": "Colón y San Martín", "clas": "Estación de Bombeo" }, "geometry": { "type": "Point", "coordinates": [ -58.935098406113845, -27.521210023022238 ] } },
+{ "type": "Feature", "properties": { "fid": 16, "id": 1, "nombre": "Vilelas", "clas": "Obra de Control" }, "geometry": { "type": "Point", "coordinates": [ -58.942800318643805, -27.526637751973691 ] } }
+]
+}
