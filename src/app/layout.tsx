@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "API Base",
-  description: "Backend base con Next.js y React",
+  title: "Sistema hídrico de AMGR",
+  description: "Riesgo hídrico, altura del río Paraná y pronósticos para el Área Metropolitana del Gran Resistencia",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
