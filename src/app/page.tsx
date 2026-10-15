@@ -404,7 +404,8 @@ export default function Home() {
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: "&copy; OpenStreetMap contributors",
-        maxZoom: 15,
+        // 19 = zoom máximo con tiles propios de OpenStreetMap (nivel de cuadra / lote).
+        maxZoom: 19,
       }).addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
