@@ -32,6 +32,7 @@ const ARROW_MIN_GAP = 14;
 const ARROW_STAGGER = 18;
 const LABEL_X = ARROW_X + ARROW_LENGTH + ARROW_STAGGER * 2 + 22;
 const LABEL_MIN_GAP = 36;
+const MIN_SCALE_TOP = 9;
 
 const formatNumber = (value: number) =>
   value.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -66,9 +67,9 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
     actual !== null && { key: "actual", label: "Altura actual", value: actual, fill: "#2563eb", stroke: "#1d4ed8", strong: true },
   ].filter((marker): marker is Marker => Boolean(marker));
 
-  // La escala arranca en 0 y llega al metro entero siguiente al valor más alto.
+  // La escala va de 0 a 9 m; solo se extiende (al metro entero siguiente) si algún valor la supera.
   const highest = Math.max(...markers.map((marker) => marker.value), 0);
-  const top = Math.max(1, Math.ceil(highest + 0.5));
+  const top = Math.max(MIN_SCALE_TOP, Math.ceil(highest + 0.5));
   const toY = (meters: number) => BOTTOM - (Math.min(Math.max(meters, 0), top) / top) * (BOTTOM - TOP);
   const tickStep = top > 10 ? 2 : 1;
   const ticks = Array.from({ length: Math.floor(top / tickStep) + 1 }, (_, i) => i * tickStep);
