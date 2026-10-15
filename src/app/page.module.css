@@ -989,6 +989,17 @@
   font-weight: 700;
 }
 
+/* Enlace a la fuente de los datos del río, debajo de las métricas de la pestaña Riesgo. */
+.sourceLink {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+.sourceLink a {
+  color: #2563eb;
+}
+
 /* Pestaña Información (InfoGuide.tsx): resumen de la guía de preparación ante inundaciones. */
 .info {
   display: flex;

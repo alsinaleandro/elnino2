@@ -914,6 +914,16 @@ export default function Home() {
                       <strong>{formatMetricValue(riskData.tendencia)}</strong>
                     </div>
                   </div>
+                  <p className={styles.sourceLink}>
+                    Fuente:{" "}
+                    <a
+                      href="https://contenidosweb.prefecturanaval.gob.ar/alturas/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Prefectura Naval Argentina · Altura de los ríos
+                    </a>
+                  </p>
                 </>
               ) : null}
             </>
