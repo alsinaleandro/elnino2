@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import CloudsView from "./CloudsView";
+import InfoGuide from "./InfoGuide";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
 import RiskBars, { DANGER_COLORS, getDangerLevel, type DangerTone, type RiskBarState } from "./RiskBars";
@@ -106,7 +107,7 @@ const formatMeasurementDate = (value: unknown) => {
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos" | "nubes">("mapa");
+  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos" | "nubes" | "info">("mapa");
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -719,10 +720,21 @@ export default function Home() {
           >
             Nubes
           </button>
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === "info" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("info")}
+            role="tab"
+            aria-selected={activeTab === "info"}
+          >
+            Información
+          </button>
         </div>
 
         <section className={styles.panel}>
-          {activeTab === "nubes" ? (
+          {activeTab === "info" ? (
+            <InfoGuide />
+          ) : activeTab === "nubes" ? (
             <CloudsView />
           ) : activeTab === "pronosticos" ? (
             <RainForecast />
