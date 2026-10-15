@@ -6,6 +6,8 @@ export async function GET() {
     endpoints: [
       "/api/geo/contains",
       "/api/geo/contains?lng=-58.98&lat=-27.46",
+      "/api/geo/capa",
+      "/api/geo/capa-lluvia",
     ],
   });
 }

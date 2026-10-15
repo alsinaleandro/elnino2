@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findMatchingFeatures, normalizePoint } from "@/lib/geo";
+import { findMatchingFeatures, normalizePoint, type PointTuple } from "@/lib/geo";
+import { getRainRiskLayer } from "@/lib/rainRiskLayer";
 import { getRiskLayer } from "@/lib/riskLayer";
 
-// Capa fija (KML de riesgos hídricos, ver src/lib/riskLayer.ts): no se acepta una ruta desde la
-// request para no exponer archivos del servidor. Se procesa una vez y queda en memoria.
-const loadLayer = getRiskLayer;
+// Capas fijas: riesgo por crecida del río Negro (KML, ver src/lib/riskLayer.ts) y riesgo por
+// precipitaciones (Res. 121/14, ver src/lib/rainRiskLayer.ts). No se acepta una ruta desde la
+// request para no exponer archivos del servidor. Se procesan una vez y quedan en memoria.
+async function matchRiskLayers(coordinates: PointTuple) {
+  const point = { type: "Point", coordinates };
+  const [rioLayer, lluviaLayer] = await Promise.all([getRiskLayer(), getRainRiskLayer()]);
+  const rio = findMatchingFeatures(rioLayer, point);
+  const lluvia = findMatchingFeatures(lluviaLayer, point);
+
+  return {
+    success: true,
+    point,
+    rio: { inside: rio.length > 0, matches: rio },
+    lluvia: { inside: lluvia.length > 0, matches: lluvia },
+  };
+}
 
 function errorResponse(error: unknown, fallback: string) {
   console.error("[geo/contains]", error);
@@ -34,17 +48,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const point = { type: "Point", coordinates: [lng, lat] };
-    const matches = findMatchingFeatures(await loadLayer(), point);
-
-    return NextResponse.json({
-      success: true,
-      point,
-      inside: matches.length > 0,
-      matches,
-    });
+    return NextResponse.json(await matchRiskLayers([lng, lat]));
   } catch (error) {
-    return errorResponse(error, "No se pudo cargar la capa de riesgo.");
+    return errorResponse(error, "No se pudieron cargar las capas de riesgo.");
   }
 }
 
@@ -76,8 +82,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Se puede enviar una capa propia en el body; si no, se usa la capa de riesgo.
-    const geojson = body?.geojson ?? body?.layer ?? body?.data ?? (await loadLayer());
+    // Se puede enviar una capa propia en el body; si no, se consultan las dos capas de riesgo.
+    const geojson = body?.geojson ?? body?.layer ?? body?.data;
+    if (!geojson) {
+      return NextResponse.json(await matchRiskLayers(point));
+    }
+
     const matches = findMatchingFeatures(geojson, { type: "Point", coordinates: point });
 
     return NextResponse.json({

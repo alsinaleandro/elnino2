@@ -1,7 +1,7 @@
 import { geoJsonResponse } from "@/lib/geoJsonResponse";
 import { getRiskLayerMapJson } from "@/lib/riskLayer";
 
-// Capa de zonas de riesgo (del KML) en GeoJSON, con los contornos simplificados a ~1 m para
+// Capa de zonas de riesgo por crecida del río Negro (del KML) en GeoJSON, con los contornos simplificados a ~1 m para
 // dibujarla en el mapa. El cálculo de zona (/api/geo/contains) usa la capa con precisión completa.
 export async function GET(request: Request) {
   try {

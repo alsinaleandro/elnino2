@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-// Capa de zonas de riesgo hídrico, leída del KML exportado de Google My Maps
+// Capa de zonas de riesgo hídrico por crecida del río Negro, leída del KML exportado de Google My Maps
 // (public/data/riesgos_hidricos_muni.kml). Cada Placemark trae su categoría en
 // ExtendedData/Cod_Tipo (1 = Leve ... 4 = Prohibida) y está dentro de una carpeta con el
 // mismo nombre ("1 - Leve", "2 - Leve Regulada", ...).
@@ -17,11 +17,14 @@ export const RISK_CATEGORIES: Record<number, string> = {
 };
 
 type Position = [number, number];
-type Geometry =
+export type Geometry =
   | { type: "Polygon"; coordinates: Position[][] }
+  | { type: "MultiPolygon"; coordinates: Position[][][] }
   | { type: "LineString"; coordinates: Position[] }
   | { type: "GeometryCollection"; geometries: Geometry[] };
 
+// Formato común de las dos capas de riesgo (crecida del río y precipitaciones, ver
+// rainRiskLayer.ts). `codigo` ordena las zonas de menor (1) a mayor (4) peligro dentro de cada capa.
 export type RiskFeature = {
   type: "Feature";
   id: number;
@@ -179,6 +182,11 @@ function simplifyGeometry(geometry: Geometry, tolerance: number): Geometry {
   switch (geometry.type) {
     case "Polygon":
       return { type: "Polygon", coordinates: geometry.coordinates.map((ring) => simplify(ring, tolerance).map(round6)) };
+    case "MultiPolygon":
+      return {
+        type: "MultiPolygon",
+        coordinates: geometry.coordinates.map((polygon) => polygon.map((ring) => simplify(ring, tolerance).map(round6))),
+      };
     case "LineString":
       return { type: "LineString", coordinates: simplify(geometry.coordinates, tolerance).map(round6) };
     case "GeometryCollection":

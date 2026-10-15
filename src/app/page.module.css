@@ -133,7 +133,7 @@
   text-transform: uppercase;
 }
 
-/* Colores de estado compartidos por la etiqueta y el indicador (DangerGauge.tsx). */
+/* Colores de estado compartidos por la etiqueta y el indicador (RiskBars.tsx). */
 .dangerHigh {
   background: #d03b3b;
   color: white;
@@ -150,49 +150,112 @@
   color: white;
 }
 
+.dangerTemporary {
+  /* Amarillo de "Severa" con rayas más claras (zona severa temporaria del mapa de precipitaciones). */
+  background: repeating-linear-gradient(45deg, #fab219 0 6px, #f59e0b 6px 10px);
+  color: #1f2937;
+}
+
 .dangerLight {
   background: #0ca30c;
   color: white;
 }
 
-.gauge {
-  display: block;
-  width: 100%;
-  max-width: 340px;
-  margin: 4px auto 0;
-  overflow: visible;
+/* Dos barras verticales paralelas (RiskBars.tsx): crecida del río Negro y precipitaciones. */
+.riskBars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.gaugeSegment {
-  transition: stroke-width 0.4s ease;
+.riskBar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  min-width: 0;
 }
 
-.gaugeSegmentDim {
-  opacity: 0.35;
+/* Alto fijo de dos líneas: si un título ocupa una sola, las dos barras siguen alineadas. */
+.riskBarTitle {
+  display: flex;
+  align-items: flex-end;
+  min-height: 2.5em;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #374151;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.riskBarScale {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.riskBarStep {
+  display: grid;
+  grid-template-columns: 14px 40px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
   transition: opacity 0.4s ease;
 }
 
-.gaugeLabel,
-.gaugeLabelActive {
-  font-size: 11px;
-  fill: #6b7280;
+.riskBarStepDim {
+  opacity: 0.35;
 }
 
-.gaugeLabelActive {
+.riskBarMarker {
+  font-size: 0.8rem;
+  color: #111827;
+  text-align: right;
+}
+
+.riskBarFill {
+  height: 48px;
+  border-radius: 6px;
+  transition: box-shadow 0.4s ease;
+}
+
+.riskBarStepActive .riskBarFill {
+  box-shadow: 0 0 0 3px #111827;
+}
+
+.riskBarLabel {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+.riskBarStepActive .riskBarLabel {
   font-weight: 700;
-  fill: #111827;
+  color: #111827;
 }
 
-.gaugeNeedle {
-  transform-box: view-box;
-  transform-origin: 150px 128px;
-  transition: transform 0.8s cubic-bezier(0.34, 1.3, 0.64, 1);
+.riskBarLabel small {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.riskBarBadge {
+  max-width: 100%;
+  text-align: center;
+  font-size: 0.72rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gaugeNeedle,
-  .gaugeSegment,
-  .gaugeSegmentDim {
+  .riskBarStep,
+  .riskBarFill {
     transition: none;
   }
 }

@@ -2,46 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import CloudsView from "./CloudsView";
-import DangerGauge, { DANGER_COLORS, type DangerTone } from "./DangerGauge";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
+import RiskBars, { DANGER_COLORS, getDangerLevel, type DangerTone, type RiskBarState } from "./RiskBars";
 import RiverGauge from "./RiverGauge";
 import { COTA_LEVELS } from "@/lib/cotas";
 import styles from "./page.module.css";
 
-const normalizeRiskText = (value?: string | null) =>
-  String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-const getDangerLevel = (category?: string | null): { label: string; tone: DangerTone } => {
-  const normalized = normalizeRiskText(category);
-
-  if (normalized.includes("PROHIBIDA")) {
-    return { label: "ZONA PROHIBIDA", tone: "dangerHigh" };
-  }
-
-  if (normalized.includes("RESTRICCION SEVERA")) {
-    return { label: "ZONA DE RESTRICCION SEVERA", tone: "dangerSevere" };
-  }
-
-  if (normalized.includes("RESTRICCION LEVE REGULADA")) {
-    return { label: "ZONA DE RESTRICCION LEVE REGULADA", tone: "dangerRegulated" };
-  }
-
-  if (normalized.includes("RESTRICCION LEVE")) {
-    return { label: "ZONA DE RESTRICCION LEVE", tone: "dangerLight" };
-  }
-
-  return { label: "SIN ZONA COINCIDENTE", tone: "dangerNeutral" };
-};
-
 // Lo mínimo que se usa de una capa de Leaflet para mostrarla u ocultarla.
 type LeafletLayer = { addTo(map: unknown): unknown; remove(): unknown };
+
+type RiskMatch = { id?: string | number; name?: string; properties?: Record<string, unknown> };
+
+// Las dos capas de riesgo hídrico; la clave coincide con la respuesta de /api/geo/contains.
+const RISK_MAPS = [
+  { key: "rio", title: "Riesgo por crecida del río Negro" },
+  { key: "lluvia", title: "Riesgo por precipitaciones" },
+] as const;
+type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
 
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
@@ -54,37 +32,58 @@ const DEFENSA_COLOR = "#7c2d12";
 const escapeHtml = (value: unknown) =>
   String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
-const STRIPES_PATTERN_ID ="zona-regulada-rayas";
+// Zonas con relleno rayado: "leve regulada" (río) y "severa temporaria" (precipitaciones).
+const STRIPED_TONES = ["dangerRegulated", "dangerTemporary"] as const satisfies DangerTone[];
+const stripesPatternId = (tone: DangerTone) => `zona-rayas-${tone}`;
 
-// Leaflet dibuja los polígonos en un <svg> propio: se le agrega el patrón de rayas amarillas
-// que usa la zona "leve regulada" como relleno.
-function addStripesPattern(pane: HTMLElement) {
+// Leaflet dibuja los polígonos de cada pane en un <svg> propio: se le agregan los patrones de
+// rayas que usan las zonas rayadas como relleno.
+function addStripesPatterns(pane: HTMLElement) {
   const svg: SVGSVGElement | null = pane.querySelector("svg");
-  if (!svg || svg.querySelector(`#${STRIPES_PATTERN_ID}`)) {
+  if (!svg) {
     return;
   }
 
   const ns = "http://www.w3.org/2000/svg";
   const defs = svg.querySelector("defs") ?? svg.insertBefore(document.createElementNS(ns, "defs"), svg.firstChild);
-  const pattern = document.createElementNS(ns, "pattern");
-  pattern.setAttribute("id", STRIPES_PATTERN_ID);
-  pattern.setAttribute("width", "10");
-  pattern.setAttribute("height", "10");
-  pattern.setAttribute("patternUnits", "userSpaceOnUse");
-  pattern.setAttribute("patternTransform", "rotate(45)");
 
-  const { fill } = DANGER_COLORS.dangerRegulated;
-  for (const [x, width, color] of [[0, 10, fill], [0, 4, "#9be89b"]] as const) {
-    const rect = document.createElementNS(ns, "rect");
-    rect.setAttribute("x", String(x));
-    rect.setAttribute("width", String(width));
-    rect.setAttribute("height", "10");
-    rect.setAttribute("fill", color);
-    pattern.appendChild(rect);
+  for (const tone of STRIPED_TONES) {
+    if (svg.querySelector(`#${stripesPatternId(tone)}`)) continue;
+
+    const pattern = document.createElementNS(ns, "pattern");
+    pattern.setAttribute("id", stripesPatternId(tone));
+    pattern.setAttribute("width", "10");
+    pattern.setAttribute("height", "10");
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("patternTransform", "rotate(45)");
+
+    const { fill, stripe = fill } = DANGER_COLORS[tone];
+    for (const [width, color] of [[10, fill], [4, stripe]] as const) {
+      const rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("width", String(width));
+      rect.setAttribute("height", "10");
+      rect.setAttribute("fill", color);
+      pattern.appendChild(rect);
+    }
+
+    defs.appendChild(pattern);
   }
-
-  defs.appendChild(pattern);
 }
+
+// Estilo de los polígonos de una capa de riesgo, con los mismos colores que las barras de la
+// pestaña Riesgo. `dashArray` distingue la capa de precipitaciones cuando se ven las dos.
+const riskZoneStyle = (dashArray?: string) => (feature?: { properties?: { categoria?: string } }) => {
+  const tone = getDangerLevel(feature?.properties?.categoria).tone;
+  const colors = DANGER_COLORS[tone];
+  const striped = (STRIPED_TONES as readonly DangerTone[]).includes(tone);
+  return {
+    color: colors.stroke,
+    weight: 1.5,
+    dashArray,
+    fillColor: striped ? `url(#${stripesPatternId(tone)})` : colors.fill,
+    fillOpacity: striped ? 0.5 : 0.4,
+  };
+};
 
 // Con esta precisión se deja de escuchar al GPS.
 const GOOD_ACCURACY_METERS = 25;
@@ -118,17 +117,19 @@ export default function Home() {
   } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+  // Zonas de cada mapa de riesgo (río y precipitaciones) que contienen la ubicación del usuario.
   const [geoLayer, setGeoLayer] = useState<{
     loading: boolean;
     error: string | null;
-    matches: Array<{ id?: string | number; name?: string; properties?: Record<string, unknown> }>;
+    matches: Record<RiskMapKey, RiskMatch[]>;
   }>({
     loading: false,
     error: null,
-    matches: [],
+    matches: { rio: [], lluvia: [] },
   });
   // Capas visibles en la pestaña Mapa (casilleros tipo GIS).
   const [showRiskLayer, setShowRiskLayer] = useState(true);
+  const [showRainLayer, setShowRainLayer] = useState(false);
   const [showCotasLayer, setShowCotasLayer] = useState(false);
   const [showDefensaLayer, setShowDefensaLayer] = useState(false);
   const [showBombeoLayer, setShowBombeoLayer] = useState(false);
@@ -136,16 +137,25 @@ export default function Home() {
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
   const riskLayerRef = useRef<LeafletLayer | null>(null);
+  const rainLayerRef = useRef<LeafletLayer | null>(null);
   const cotasLayerRef = useRef<LeafletLayer | null>(null);
   const defensaLayerRef = useRef<LeafletLayer | null>(null);
   const bombeoLayerRef = useRef<LeafletLayer | null>(null);
-  const layerVisibilityRef = useRef({ risk: true, cotas: false, defensa: false, bombeo: false });
-  const matchedRiskCategory =
-    geoLayer.matches[0]?.properties?.categoria != null
-      ? String(geoLayer.matches[0].properties?.categoria)
-      : null;
-  const matchedRiskLevel = getDangerLevel(matchedRiskCategory);
+  const layerVisibilityRef = useRef({ risk: true, rain: false, cotas: false, defensa: false, bombeo: false });
   const isRiskMatchResolved = !locationLoading && !geoLayer.loading && !geoLayer.error;
+  const hasAnyRiskMatch = geoLayer.matches.rio.length > 0 || geoLayer.matches.lluvia.length > 0;
+
+  // Estado de cada barra de la pestaña Riesgo, calculado de forma independiente por mapa.
+  const riskBarState = (key: RiskMapKey): RiskBarState => {
+    if (locationLoading || geoLayer.loading) return { tone: null, status: "Cargando..." };
+    if (!isRiskMatchResolved) return { tone: null, status: "Sin datos" };
+
+    const category = geoLayer.matches[key][0]?.properties?.categoria;
+    if (category == null) return { tone: null, status: "Fuera de zona de riesgo" };
+
+    const level = getDangerLevel(String(category));
+    return { tone: level.tone, status: level.label };
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -310,7 +320,9 @@ export default function Home() {
       try {
         // Al afinar la posición se conserva el resultado anterior en pantalla hasta tener el nuevo.
         setGeoLayer((current) =>
-          current.matches.length > 0 ? current : { loading: true, error: null, matches: [] },
+          current.matches.rio.length > 0 || current.matches.lluvia.length > 0
+            ? current
+            : { loading: true, error: null, matches: { rio: [], lluvia: [] } },
         );
 
         const response = await fetch(
@@ -320,14 +332,14 @@ export default function Home() {
         const payload = await response.json();
 
         if (!response.ok) {
-          throw new Error(payload?.error || "No se pudo consultar la capa de riesgo.");
+          throw new Error(payload?.error || "No se pudieron consultar las capas de riesgo.");
         }
 
         if (!cancelled) {
           setGeoLayer({
             loading: false,
             error: null,
-            matches: payload.matches ?? [],
+            matches: { rio: payload.rio?.matches ?? [], lluvia: payload.lluvia?.matches ?? [] },
           });
         }
       } catch (error) {
@@ -336,7 +348,7 @@ export default function Home() {
             loading: false,
             error:
               error instanceof Error ? error.message : "No se pudo verificar la capa geográfica.",
-            matches: [],
+            matches: { rio: [], lluvia: [] },
           });
         }
       }
@@ -396,9 +408,10 @@ export default function Home() {
       }).addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
-      // cotas abajo, zonas de riesgo encima, luego defensas y estaciones de bombeo, y el
-      // marcador del usuario arriba de todo.
+      // cotas abajo, riesgo por precipitaciones y por crecida del río encima, luego defensas y
+      // estaciones de bombeo, y el marcador del usuario arriba de todo.
       map.createPane("cotasPane").style.zIndex = "410";
+      map.createPane("rainPane").style.zIndex = "415";
       map.createPane("riskPane").style.zIndex = "420";
       map.createPane("defensaPane").style.zIndex = "430";
       map.createPane("bombeoPane").style.zIndex = "440";
@@ -425,30 +438,21 @@ export default function Home() {
           }
 
           // Mismos colores que el indicador de la pestaña Riesgo. La zona "leve regulada" usa un
-          // relleno amarillo rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
+          // relleno rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
             pane: "riskPane",
-            style: (feature?: { properties?: { categoria?: string } }) => {
-              const tone = getDangerLevel(feature?.properties?.categoria).tone;
-              const colors = DANGER_COLORS[tone];
-              return {
-                color: colors.stroke,
-                weight: 1.5,
-                fillColor: tone === "dangerRegulated" ? `url(#${STRIPES_PATTERN_ID})` : colors.fill,
-                fillOpacity: tone === "dangerRegulated" ? 0.5 : 0.4,
-              };
-            },
+            style: riskZoneStyle(),
             onEachFeature: (feature: any, layerItem: any) => {
               const category = feature?.properties?.categoria ?? "Zona de riesgo";
               const area = feature?.properties?.area_ha ?? "-";
-              layerItem.bindPopup(`<strong>${category}</strong><br>Área: ${area} ha`);
+              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida del río Negro<br>Área: ${area} ha`);
             },
           });
 
           riskLayerRef.current = layer;
           if (layerVisibilityRef.current.risk) {
             layer.addTo(map);
-            addStripesPattern(map.getPane("riskPane"));
+            addStripesPatterns(map.getPane("riskPane"));
           }
 
           if (layer.getBounds && layer.getBounds().isValid()) {
@@ -462,6 +466,43 @@ export default function Home() {
             setGeoLayer((current) => ({
               ...current,
               error: "No se pudo cargar la capa GeoJSON para mostrarla en el mapa.",
+            }));
+          }
+        });
+
+      fetch("/api/geo/capa-lluvia")
+        .then((response) => response.json())
+        .then((geojsonData) => {
+          if (cancelled) {
+            return;
+          }
+
+          // Mismos colores que la capa del río; el borde punteado la distingue cuando se ven las dos.
+          const layer = L.geoJSON(geojsonData, {
+            pane: "rainPane",
+            style: riskZoneStyle("6 4"),
+            onEachFeature: (
+              feature: { properties?: Record<string, unknown> },
+              layerItem: { bindPopup: (html: string) => void },
+            ) => {
+              const props = feature.properties ?? {};
+              layerItem.bindPopup(
+                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Precipitaciones (Res. 121/14)<br>Área: ${escapeHtml(props.area_ha ?? "-")} ha`,
+              );
+            },
+          });
+
+          rainLayerRef.current = layer;
+          if (layerVisibilityRef.current.rain) {
+            layer.addTo(map);
+            addStripesPatterns(map.getPane("rainPane"));
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setGeoLayer((current) => ({
+              ...current,
+              error: "No se pudo cargar la capa de riesgo por precipitaciones.",
             }));
           }
         });
@@ -586,6 +627,7 @@ export default function Home() {
       cancelled = true;
       userMarkerRef.current = null;
       riskLayerRef.current = null;
+      rainLayerRef.current = null;
       cotasLayerRef.current = null;
       defensaLayerRef.current = null;
       bombeoLayerRef.current = null;
@@ -600,6 +642,7 @@ export default function Home() {
   useEffect(() => {
     layerVisibilityRef.current = {
       risk: showRiskLayer,
+      rain: showRainLayer,
       cotas: showCotasLayer,
       defensa: showDefensaLayer,
       bombeo: showBombeoLayer,
@@ -609,6 +652,7 @@ export default function Home() {
 
     const layers: Array<[LeafletLayer | null, boolean]> = [
       [riskLayerRef.current, showRiskLayer],
+      [rainLayerRef.current, showRainLayer],
       [cotasLayerRef.current, showCotasLayer],
       [defensaLayerRef.current, showDefensaLayer],
       [bombeoLayerRef.current, showBombeoLayer],
@@ -620,9 +664,12 @@ export default function Home() {
     }
 
     if (showRiskLayer && riskLayerRef.current) {
-      addStripesPattern(map.getPane("riskPane"));
+      addStripesPatterns(map.getPane("riskPane"));
     }
-  }, [showRiskLayer, showCotasLayer, showDefensaLayer, showBombeoLayer]);
+    if (showRainLayer && rainLayerRef.current) {
+      addStripesPatterns(map.getPane("rainPane"));
+    }
+  }, [showRiskLayer, showRainLayer, showCotasLayer, showDefensaLayer, showBombeoLayer]);
 
   useEffect(() => {
     if (location && userMarkerRef.current) {
@@ -711,7 +758,15 @@ export default function Home() {
                         checked={showRiskLayer}
                         onChange={(event) => setShowRiskLayer(event.target.checked)}
                       />
-                      Zonas de riesgo
+                      Riesgo por crecida del río Negro
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showRainLayer}
+                        onChange={(event) => setShowRainLayer(event.target.checked)}
+                      />
+                      Riesgo por precipitaciones
                     </label>
                     <label>
                       <input
@@ -774,29 +829,30 @@ export default function Home() {
                 </>
               ) : null}
 
-              {geoLayer.loading ? <p className={styles.status}>Verificando la capa de riesgo...</p> : null}
+              {geoLayer.loading ? <p className={styles.status}>Verificando las capas de riesgo...</p> : null}
               {geoLayer.error ? <p className={styles.error}>{geoLayer.error}</p> : null}
 
               {!geoLayer.loading && !geoLayer.error && location ? (
-                geoLayer.matches.length > 0 ? (
+                hasAnyRiskMatch ? (
                   <div className={styles.geoInfo}>
-                    {geoLayer.matches.map((match, index) => {
-                      const category = typeof match.properties?.categoria === "string"
+                    {RISK_MAPS.map(({ key, title }) => {
+                      const match = geoLayer.matches[key][0];
+                      const category = typeof match?.properties?.categoria === "string"
                         ? match.properties.categoria
-                        : "Zona de riesgo";
-                      const area = match.properties?.area_ha ?? "-";
-                      const layerName = match.name || category;
+                        : null;
+                      const area = match?.properties?.area_ha ?? "-";
 
                       return (
-                        <div key={`${match.id ?? index}`} className={styles.geoMatch}>
+                        <div key={key} className={styles.geoMatch}>
                           <div className={styles.geoMatchHeader}>
-                            <span>Capa coincidente</span>
-                            <strong>{String(layerName)}</strong>
+                            <span>{title}</span>
+                            <strong>{category ?? "Fuera de zona de riesgo"}</strong>
                           </div>
-                          <div className={styles.geoMatchMeta}>
-                            <span>Categoría: {String(category)}</span>
-                            <span>Área: {String(area)} ha</span>
-                          </div>
+                          {category ? (
+                            <div className={styles.geoMatchMeta}>
+                              <span>Área de la zona: {String(area)} ha</span>
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
@@ -813,20 +869,10 @@ export default function Home() {
 
               <div className={styles.riskZoneCard}>
                 <div className={styles.zoneHeader}>
-                  <span>Zona coincidente</span>
-                  <span className={`${styles.dangerBadge} ${styles[matchedRiskLevel.tone]}`}>
-                    {isRiskMatchResolved && geoLayer.matches.length > 0
-                      ? matchedRiskLevel.label
-                      : locationLoading || geoLayer.loading
-                        ? "CARGANDO..."
-                        : "SIN ZONA COINCIDENTE"}
-                  </span>
+                  <span>Zona de riesgo hídrico de tu ubicación</span>
                 </div>
 
-                <DangerGauge
-                  tone={isRiskMatchResolved && geoLayer.matches.length > 0 ? matchedRiskLevel.tone : null}
-                  label={isRiskMatchResolved && geoLayer.matches.length > 0 ? matchedRiskLevel.label : "sin zona coincidente"}
-                />
+                <RiskBars rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
               </div>
 
               {riskData ? (
