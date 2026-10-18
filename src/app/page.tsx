@@ -760,6 +760,10 @@ export default function Home() {
                 Mirá el mapa interactivo para saber si estás en una zona de riesgo por lluvia, crecida de ríos, o
                 ambos.
               </p>
+              <p className={styles.coverNote}>
+                Esta app está diseñada para el <strong>AMGR</strong> (Área Metropolitana del Gran Resistencia):
+                Resistencia, Barranqueras, Fontana y Puerto Vilelas.
+              </p>
               {nextTab ? (
                 <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
                   Siguiente
