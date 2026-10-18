@@ -13,9 +13,13 @@
   gap: 10px;
 }
 
+/* En el celular las pestañas no entran en una fila: se deslizan horizontalmente. */
 .tabs {
   display: inline-flex;
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: 3px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.04);
@@ -33,6 +37,139 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+/* Portada: primera pantalla al abrir la app. Pensada para el alto de un celular. */
+.cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 18px;
+  min-height: calc(100svh - 160px);
+  padding: 24px 8px;
+  text-align: center;
+}
+
+.coverKicker {
+  align-self: center;
+  max-width: 22rem;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.panel h1.coverTitle {
+  font-size: clamp(2.2rem, 11vw, 3.6rem);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: #111827;
+}
+
+.coverText {
+  max-width: 26rem;
+  margin: 0 auto;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: #374151;
+}
+
+.coverButton {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  min-height: 52px;
+  padding: 14px 32px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.2);
+}
+
+/* Botón Siguiente al final de cada pestaña. */
+.nextNav {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.coverButton:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  .coverButton:hover {
+    background: #1f2937;
+  }
+}
+
+/* Significado de cada nivel, debajo de las barras de la pestaña Riesgo. */
+.riskGuide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.riskGuideTitle {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.riskGuideList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.riskGuideItem dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.riskGuideItem dt i {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.riskGuideItem dd {
+  margin-left: 22px;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: #374151;
+}
+
+.riskGuideMaps {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 /* Solo con mouse: en pantallas táctiles :hover queda "pegado" tras tocar la pestaña y
@@ -434,6 +571,13 @@
   height: 10px;
   border-radius: 3px;
   opacity: 0.85;
+}
+
+/* Muestra rayada de la capa de precipitaciones; el color del nivel llega por `color`. */
+.cotasLegendItem i.legendHatch {
+  opacity: 1;
+  border: 1.5px solid;
+  background: repeating-linear-gradient(-45deg, currentColor 0 2px, transparent 2px 5px);
 }
 
 .cotaCard {
@@ -1032,6 +1176,20 @@
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
 }
 
+/* Esquema de la mochila de emergencia: ocupa todo el ancho; al tocarla se abre en grande. */
+.infoBackpack {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.infoBackpack img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .infoCard {
   display: flex;
   flex-direction: column;
@@ -1152,6 +1310,97 @@
 .infoLinks a,
 .infoSource a {
   color: #2563eb;
+}
+
+/* Pestaña Ayuda: botones grandes, fáciles de tocar con el pulgar. */
+.helpEmergencies {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.helpEmergency {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  background: #d03b3b;
+  color: white;
+  box-shadow: 0 8px 18px rgba(208, 59, 59, 0.25);
+}
+
+.helpEmergency span {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.helpEmergency strong {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.helpList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.helpItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.helpItem:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.helpName {
+  display: block;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.helpPhone {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.helpActions {
+  display: flex;
+  gap: 8px;
+}
+
+.helpCall,
+.helpWhatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.helpCall {
+  background: #111827;
+  color: white;
+}
+
+/* Verde más oscuro que el de la marca de WhatsApp para que el texto blanco se lea bien. */
+.helpWhatsapp {
+  background: #128c4b;
+  color: white;
 }
 
 .infoSource {

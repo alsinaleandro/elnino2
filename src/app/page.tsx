@@ -2,10 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import CloudsView from "./CloudsView";
+import HelpView from "./HelpView";
 import InfoGuide from "./InfoGuide";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
-import RiskBars, { DANGER_COLORS, getDangerLevel, type DangerTone, type RiskBarState } from "./RiskBars";
+import RiskBars, {
+  getDangerLevel,
+  RiskLevelsGuide,
+  type DangerTone,
+  type RiskBarState,
+} from "./RiskBars";
 import RiverGauge from "./RiverGauge";
 import { COTA_LEVELS } from "@/lib/cotas";
 import styles from "./page.module.css";
@@ -22,6 +28,19 @@ const RISK_MAPS = [
 ] as const;
 type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
 
+// Pestañas en el orden en que se muestran; la app abre en la portada ("inicio").
+const TABS = [
+  { key: "inicio", label: "Inicio" },
+  { key: "riesgo", label: "Riesgo" },
+  { key: "crecida", label: "Crecida" },
+  { key: "info", label: "Información" },
+  { key: "mapa", label: "Mapa" },
+  { key: "pronosticos", label: "Pronósticos" },
+  { key: "nubes", label: "Nubes" },
+  { key: "ayuda", label: "Ayuda" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
+
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
   "Estación de Bombeo": "#0ea5e9",
@@ -33,13 +52,47 @@ const DEFENSA_COLOR = "#7c2d12";
 const escapeHtml = (value: unknown) =>
   String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
-// Zonas con relleno rayado: "leve regulada" (río) y "severa temporaria" (precipitaciones).
-const STRIPED_TONES = ["dangerRegulated", "dangerTemporary"] as const satisfies DangerTone[];
-const stripesPatternId = (tone: DangerTone) => `zona-rayas-${tone}`;
+// Colores de las dos capas de riesgo en el mapa, de menor a mayor peligro. Cada capa tiene su
+// propia familia de colores para poder verlas juntas: el río es un relleno azul y las
+// precipitaciones un rayado cálido sobre fondo casi transparente, que deja ver el azul debajo.
+type MapLevel = { tone: DangerTone; label: string; color: string };
+
+const RIVER_LEVELS: MapLevel[] = [
+  { tone: "dangerLight", label: "Leve", color: "#93c5fd" },
+  { tone: "dangerRegulated", label: "Leve regulada", color: "#3b82f6" },
+  { tone: "dangerSevere", label: "Severa", color: "#1e40af" },
+  { tone: "dangerHigh", label: "Prohibida", color: "#0b1a4a" },
+];
+
+const RAIN_LEVELS: MapLevel[] = [
+  { tone: "dangerLight", label: "Leve", color: "#eab308" },
+  { tone: "dangerTemporary", label: "Severa temporaria", color: "#f97316" },
+  { tone: "dangerSevere", label: "Severa", color: "#dc2626" },
+  { tone: "dangerHigh", label: "Prohibida", color: "#831843" },
+];
+
+const NO_LEVEL_COLOR = "#6b7280";
+
+const levelColor = (levels: MapLevel[], category?: string) =>
+  levels.find((level) => level.tone === getDangerLevel(category).tone)?.color ?? NO_LEVEL_COLOR;
+
+type ZoneFeature = { properties?: { categoria?: string } };
+
+const riverZoneStyle = (feature?: ZoneFeature) => {
+  const color = levelColor(RIVER_LEVELS, feature?.properties?.categoria);
+  return { color, weight: 1.5, opacity: 0.9, fillColor: color, fillOpacity: 0.45 };
+};
+
+const rainPatternId = (color: string) => `lluvia-rayas-${color.slice(1)}`;
+
+const rainZoneStyle = (feature?: ZoneFeature) => {
+  const color = levelColor(RAIN_LEVELS, feature?.properties?.categoria);
+  return { color, weight: 2, opacity: 0.95, fillColor: `url(#${rainPatternId(color)})`, fillOpacity: 1 };
+};
 
 // Leaflet dibuja los polígonos de cada pane en un <svg> propio: se le agregan los patrones de
-// rayas que usan las zonas rayadas como relleno.
-function addStripesPatterns(pane: HTMLElement) {
+// rayas que usa la capa de precipitaciones como relleno.
+function addRainPatterns(pane: HTMLElement) {
   const svg: SVGSVGElement | null = pane.querySelector("svg");
   if (!svg) {
     return;
@@ -48,43 +101,29 @@ function addStripesPatterns(pane: HTMLElement) {
   const ns = "http://www.w3.org/2000/svg";
   const defs = svg.querySelector("defs") ?? svg.insertBefore(document.createElementNS(ns, "defs"), svg.firstChild);
 
-  for (const tone of STRIPED_TONES) {
-    if (svg.querySelector(`#${stripesPatternId(tone)}`)) continue;
+  for (const color of [...RAIN_LEVELS.map((level) => level.color), NO_LEVEL_COLOR]) {
+    if (svg.querySelector(`#${rainPatternId(color)}`)) continue;
 
     const pattern = document.createElementNS(ns, "pattern");
-    pattern.setAttribute("id", stripesPatternId(tone));
-    pattern.setAttribute("width", "10");
-    pattern.setAttribute("height", "10");
+    pattern.setAttribute("id", rainPatternId(color));
+    pattern.setAttribute("width", "8");
+    pattern.setAttribute("height", "8");
     pattern.setAttribute("patternUnits", "userSpaceOnUse");
-    pattern.setAttribute("patternTransform", "rotate(45)");
+    pattern.setAttribute("patternTransform", "rotate(-45)");
 
-    const { fill, stripe = fill } = DANGER_COLORS[tone];
-    for (const [width, color] of [[10, fill], [4, stripe]] as const) {
+    // Fondo apenas teñido + raya de 3 px del color del nivel.
+    for (const [width, opacity] of [[8, 0.15], [3, 0.9]] as const) {
       const rect = document.createElementNS(ns, "rect");
       rect.setAttribute("width", String(width));
-      rect.setAttribute("height", "10");
+      rect.setAttribute("height", "8");
       rect.setAttribute("fill", color);
+      rect.setAttribute("fill-opacity", String(opacity));
       pattern.appendChild(rect);
     }
 
     defs.appendChild(pattern);
   }
 }
-
-// Estilo de los polígonos de una capa de riesgo, con los mismos colores que las barras de la
-// pestaña Riesgo. `dashArray` distingue la capa de precipitaciones cuando se ven las dos.
-const riskZoneStyle = (dashArray?: string) => (feature?: { properties?: { categoria?: string } }) => {
-  const tone = getDangerLevel(feature?.properties?.categoria).tone;
-  const colors = DANGER_COLORS[tone];
-  const striped = (STRIPED_TONES as readonly DangerTone[]).includes(tone);
-  return {
-    color: colors.stroke,
-    weight: 1.5,
-    dashArray,
-    fillColor: striped ? `url(#${stripesPatternId(tone)})` : colors.fill,
-    fillOpacity: striped ? 0.5 : 0.4,
-  };
-};
 
 // Con esta precisión se deja de escuchar al GPS.
 const GOOD_ACCURACY_METERS = 25;
@@ -107,7 +146,22 @@ const formatMeasurementDate = (value: unknown) => {
 };
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"mapa" | "riesgo" | "pronosticos" | "nubes" | "info">("mapa");
+  const [activeTab, setActiveTab] = useState<TabKey>("inicio");
+  const nextTab = TABS[TABS.findIndex((tab) => tab.key === activeTab) + 1];
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+
+  // El botón Siguiente queda al final del contenido: al cambiar de pestaña se vuelve arriba.
+  const goToTab = (key: TabKey) => {
+    setActiveTab(key);
+    window.scrollTo({ top: 0 });
+  };
+
+  // En el celular la barra de pestañas se desliza: se trae a la vista la pestaña activa.
+  useEffect(() => {
+    tabsRef.current
+      ?.querySelector('[aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [activeTab]);
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -410,21 +464,22 @@ export default function Home() {
       }).addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
-      // cotas abajo, riesgo por precipitaciones y por crecida del río encima, luego defensas y
-      // estaciones de bombeo, y el marcador del usuario arriba de todo.
+      // cotas abajo, el relleno del río encima y el rayado de precipitaciones sobre él (así se ven
+      // las dos), luego defensas y estaciones de bombeo, y el marcador del usuario arriba de todo.
       map.createPane("cotasPane").style.zIndex = "410";
-      map.createPane("rainPane").style.zIndex = "415";
-      map.createPane("riskPane").style.zIndex = "420";
+      map.createPane("riskPane").style.zIndex = "415";
+      map.createPane("rainPane").style.zIndex = "420";
       map.createPane("defensaPane").style.zIndex = "430";
       map.createPane("bombeoPane").style.zIndex = "440";
       map.createPane("userPane").style.zIndex = "650";
 
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
         pane: "userPane",
-        // Azul con borde blanco: se distingue sobre las zonas roja, amarilla y verde.
+        // Negro con borde blanco: se distingue sobre el relleno azul del río y el rayado cálido
+        // de precipitaciones.
         radius: 9,
         color: "#ffffff",
-        fillColor: "#2563eb",
+        fillColor: "#111827",
         fillOpacity: 1,
         weight: 3,
       });
@@ -439,11 +494,9 @@ export default function Home() {
             return;
           }
 
-          // Mismos colores que el indicador de la pestaña Riesgo. La zona "leve regulada" usa un
-          // relleno rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
             pane: "riskPane",
-            style: riskZoneStyle(),
+            style: riverZoneStyle,
             onEachFeature: (feature: any, layerItem: any) => {
               const category = feature?.properties?.categoria ?? "Zona de riesgo";
               const area = feature?.properties?.area_ha ?? "-";
@@ -454,7 +507,6 @@ export default function Home() {
           riskLayerRef.current = layer;
           if (layerVisibilityRef.current.risk) {
             layer.addTo(map);
-            addStripesPatterns(map.getPane("riskPane"));
           }
 
           if (layer.getBounds && layer.getBounds().isValid()) {
@@ -479,10 +531,10 @@ export default function Home() {
             return;
           }
 
-          // Mismos colores que la capa del río; el borde punteado la distingue cuando se ven las dos.
+          // Relleno rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
             pane: "rainPane",
-            style: riskZoneStyle("6 4"),
+            style: rainZoneStyle,
             onEachFeature: (
               feature: { properties?: Record<string, unknown> },
               layerItem: { bindPopup: (html: string) => void },
@@ -497,7 +549,7 @@ export default function Home() {
           rainLayerRef.current = layer;
           if (layerVisibilityRef.current.rain) {
             layer.addTo(map);
-            addStripesPatterns(map.getPane("rainPane"));
+            addRainPatterns(map.getPane("rainPane"));
           }
         })
         .catch(() => {
@@ -665,11 +717,8 @@ export default function Home() {
       if (!visible && map.hasLayer(layer)) layer.remove();
     }
 
-    if (showRiskLayer && riskLayerRef.current) {
-      addStripesPatterns(map.getPane("riskPane"));
-    }
     if (showRainLayer && rainLayerRef.current) {
-      addStripesPatterns(map.getPane("rainPane"));
+      addRainPatterns(map.getPane("rainPane"));
     }
   }, [showRiskLayer, showRainLayer, showCotasLayer, showDefensaLayer, showBombeoLayer]);
 
@@ -683,56 +732,40 @@ export default function Home() {
     <div className={styles.page}>
       <main className={styles.main}>
 
-        <div className={styles.tabs} role="tablist" aria-label="Pestañas principales">
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "mapa" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("mapa")}
-            role="tab"
-            aria-selected={activeTab === "mapa"}
-          >
-            Mapa
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "riesgo" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("riesgo")}
-            role="tab"
-            aria-selected={activeTab === "riesgo"}
-          >
-            Riesgo
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "pronosticos" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("pronosticos")}
-            role="tab"
-            aria-selected={activeTab === "pronosticos"}
-          >
-            Pronósticos
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "nubes" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("nubes")}
-            role="tab"
-            aria-selected={activeTab === "nubes"}
-          >
-            Nubes
-          </button>
-          <button
-            type="button"
-            className={`${styles.tab} ${activeTab === "info" ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab("info")}
-            role="tab"
-            aria-selected={activeTab === "info"}
-          >
-            Información
-          </button>
+        <div ref={tabsRef} className={styles.tabs} role="tablist" aria-label="Pestañas principales">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
+              onClick={() => goToTab(key)}
+              role="tab"
+              aria-selected={activeTab === key}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <section className={styles.panel}>
-          {activeTab === "info" ? (
+          {activeTab === "inicio" ? (
+            <div className={styles.cover}>
+              <p className={styles.coverKicker}>El fenómeno El Niño trae lluvias e inundaciones</p>
+              <h1 className={styles.coverTitle}>¿Estoy en riesgo?</h1>
+              <p className={styles.coverText}>
+                Mirá el mapa interactivo para saber si estás en una zona de riesgo por lluvia, crecida de ríos, o
+                ambos.
+              </p>
+              {nextTab ? (
+                <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
+                  Siguiente
+                  <span aria-hidden="true">→</span>
+                </button>
+              ) : null}
+            </div>
+          ) : activeTab === "ayuda" ? (
+            <HelpView />
+          ) : activeTab === "info" ? (
             <InfoGuide />
           ) : activeTab === "nubes" ? (
             <CloudsView />
@@ -809,6 +842,31 @@ export default function Home() {
                   <div className={styles.mapWrap}>
                     <div ref={mapContainerRef} className={styles.map} />
                   </div>
+                  {showRiskLayer ? (
+                    <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida del río Negro">
+                      <span className={styles.cotasLegendTitle}>Riesgo por crecida del río Negro</span>
+                      {RIVER_LEVELS.map((level) => (
+                        <span key={level.tone} className={styles.cotasLegendItem}>
+                          <i style={{ background: level.color }} />
+                          {level.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {showRainLayer ? (
+                    <div className={styles.cotasLegend} aria-label="Referencias de riesgo por precipitaciones">
+                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones</span>
+                      {RAIN_LEVELS.map((level) => (
+                        <span key={level.tone} className={styles.cotasLegendItem}>
+                          <i
+                            className={styles.legendHatch}
+                            style={{ color: level.color, borderColor: level.color }}
+                          />
+                          {level.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   {showCotasLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias del mapa de cotas">
                       <span className={styles.cotasLegendTitle}>Cota del terreno (MOP)</span>
@@ -875,18 +933,10 @@ export default function Home() {
                 )
               ) : null}
             </>
-          ) : (
+          ) : activeTab === "crecida" ? (
             <>
               {riskLoading ? <p className={styles.status}>Cargando información del río...</p> : null}
               {riskError ? <p className={styles.error}>{riskError}</p> : null}
-
-              <div className={styles.riskZoneCard}>
-                <div className={styles.zoneHeader}>
-                  <span>Zona de riesgo hídrico de tu ubicación</span>
-                </div>
-
-                <RiskBars rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
-              </div>
 
               {riskData ? (
                 <>
@@ -927,7 +977,25 @@ export default function Home() {
                 </>
               ) : null}
             </>
+          ) : (
+            <div className={styles.riskZoneCard}>
+              <div className={styles.zoneHeader}>
+                <span>Zona de riesgo hídrico de tu ubicación</span>
+              </div>
+
+              <RiskBars rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
+              <RiskLevelsGuide rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
+            </div>
           )}
+
+          {activeTab !== "inicio" && nextTab ? (
+            <div className={styles.nextNav}>
+              <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
+                Siguiente: {nextTab.label}
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          ) : null}
         </section>
       </main>
     </div>

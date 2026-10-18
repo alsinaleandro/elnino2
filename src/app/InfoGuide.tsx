@@ -1,3 +1,5 @@
+import Image from "next/image";
+import backpackImage from "../../public/images/mochila-emergencia.jpg";
 import styles from "./page.module.css";
 
 // Pestaña Información: resumen de "Antes de que llegue el agua. Guía de preparación familiar frente
@@ -233,6 +235,23 @@ const EMERGENCY_BAG: Array<[string, string]> = [
   ["Juguetes", "si hay chicos, alguno de sus favoritos."],
 ];
 
+// Elementos del esquema de la mochila (imagen), para el texto alternativo.
+const BACKPACK_ITEMS = [
+  "documentos y llaves",
+  "botiquín de primeros auxilios",
+  "medicamentos personales",
+  "equipo para lluvia",
+  "cargador portátil",
+  "dinero en efectivo",
+  "elementos de aseo",
+  "cambio de ropa y calzado",
+  "alimentos no perecederos",
+  "agua potable",
+  "linterna y pilas de repuesto",
+  "bolsas plásticas",
+  "repelente y protector solar",
+];
+
 const LAST_ACTIONS = [
   "Elevá objetos de valor, electrodomésticos, documentos y sustancias peligrosas.",
   "Fotografiá el interior de la casa y los bienes principales.",
@@ -243,10 +262,12 @@ const LAST_ACTIONS = [
   "Guardá o atá los objetos sueltos del patio: con viento se vuelven proyectiles.",
 ];
 
-const RESOURCES: Array<[string, string]> = [
+// Sitios de interés; se muestran en la pestaña Ayuda (HelpView.tsx).
+export const RESOURCES: Array<[string, string]> = [
   ["Instituto Nacional del Agua (INA) · Alerta temprana", "https://www.ina.gov.ar/alerta/"],
   ["Servicio Meteorológico Nacional (SMN)", "https://www.smn.gob.ar/"],
   ["Prefectura Naval Argentina · Altura de los ríos", "https://contenidosweb.prefecturanaval.gob.ar/alturas/"],
+  ["Hidroalerta Vilelas", "https://hidrometro.concejovilelas.com/"],
   ["Sistema Nacional de Información Hídrica", "https://snih.hidricosargentina.gob.ar/Filtros.aspx"],
   ["SINAGIR · Sistema Nacional de Gestión Integral del Riesgo", "https://www.argentina.gob.ar/sinagir"],
   ["Instituto Geográfico Nacional (IGN)", "https://www.ign.gob.ar/"],
@@ -323,6 +344,27 @@ export default function InfoGuide() {
         </p>
       </section>
 
+      <section className={styles.infoCard}>
+        <h3>Mochila de emergencia</h3>
+        <p>
+          Tené lista una mochila con lo indispensable para salir rápido de tu casa. Tocá la imagen para verla en
+          tamaño completo.
+        </p>
+        <a
+          className={styles.infoBackpack}
+          href="/images/mochila-emergencia.jpg"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Image
+            src={backpackImage}
+            alt={`Esquema de la mochila de emergencia: ${BACKPACK_ITEMS.join(", ")}. Dejala siempre en un lugar de fácil acceso.`}
+            sizes="(max-width: 1100px) 100vw, 1060px"
+            placeholder="blur"
+          />
+        </a>
+      </section>
+
       {PHASES.map((phase, index) => (
         <details key={phase.id} className={styles.infoPhase} open={index === 0}>
           <summary>
@@ -358,19 +400,6 @@ export default function InfoGuide() {
           </div>
         </details>
       ))}
-
-      <section className={styles.infoCard}>
-        <h3>Sitios útiles</h3>
-        <ul className={styles.infoLinks}>
-          {RESOURCES.map(([label, url]) => (
-            <li key={url}>
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       <p className={styles.infoSource}>
         Fuente: Rico J., Botteron A., Don D., Marega J. (2026). <em>Antes de que llegue el agua. Guía de preparación

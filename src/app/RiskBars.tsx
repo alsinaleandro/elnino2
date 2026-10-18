@@ -126,6 +126,62 @@ function RiskBar({ title, segments, state }: { title: string; segments: Segment[
   );
 }
 
+// Qué significa cada nivel, en lenguaje simple. Las variantes rayadas comparten el texto del nivel
+// base (leve regulada → leve, severa temporaria → severa).
+const LIGHT_MEANING =
+  "El agua puede llegar solo en eventos extraordinarios. Se puede vivir y construir, tomando precauciones.";
+const SEVERE_MEANING =
+  "Es una zona inundable. Construir y vivir tiene restricciones: conviene tener un plan y un lugar seguro en altura.";
+
+const LEVEL_MEANINGS: Partial<Record<DangerTone, string>> = {
+  dangerLight: LIGHT_MEANING,
+  dangerRegulated: `${LIGHT_MEANING} Es una variante de la zona leve.`,
+  dangerSevere: SEVERE_MEANING,
+  dangerTemporary: `${SEVERE_MEANING} Es una variante de la zona severa.`,
+  dangerHigh: "El agua llega con frecuencia. No está permitido construir viviendas: es la zona de mayor peligro.",
+};
+
+const zoneTitle = (tone: DangerTone) =>
+  [...RIVER_SEGMENTS, ...RAIN_SEGMENTS].find((segment) => segment.tone === tone)?.title ?? "";
+
+// Explica solo la zona donde está el usuario en cada mapa; si es la misma en los dos, una vez.
+export function RiskLevelsGuide({ rio, lluvia }: Props) {
+  const zones: Array<{ maps: string; tone: DangerTone }> = [];
+  for (const [maps, state] of [
+    ["Crecida del río Negro", rio],
+    ["Precipitaciones", lluvia],
+  ] as const) {
+    if (!state.tone || !LEVEL_MEANINGS[state.tone]) continue;
+    const same = zones.find((zone) => zone.tone === state.tone);
+    if (same) same.maps += " y precipitaciones";
+    else zones.push({ maps, tone: state.tone });
+  }
+
+  if (zones.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className={styles.riskGuide} aria-label="Qué significa tu zona de riesgo">
+      <h3 className={styles.riskGuideTitle}>¿Qué significa tu zona?</h3>
+      <dl className={styles.riskGuideList}>
+        {zones.map(({ maps, tone }) => (
+          <div key={tone} className={styles.riskGuideItem}>
+            <dt>
+              <i style={{ background: DANGER_COLORS[tone].fill }} aria-hidden="true" />
+              {zoneTitle(tone)}
+            </dt>
+            <dd>
+              <span className={styles.riskGuideMaps}>{maps}</span>
+              {LEVEL_MEANINGS[tone]}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 export default function RiskBars({ rio, lluvia }: Props) {
   return (
     <div className={styles.riskBars}>
