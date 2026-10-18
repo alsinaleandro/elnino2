@@ -343,14 +343,14 @@
   background: #f8fafc;
 }
 
-/* En el celular el mapa ocupa algo más de la mitad de la pantalla, para que debajo se vean las
+/* En el celular el mapa ocupa menos de la mitad de la pantalla, para que debajo se vean las
    leyendas sin tanto scroll. Desde tablet ocupa el alto que dejan libre pestañas y márgenes
    (~250px). svh = alto con la barra del navegador visible; vh queda de respaldo. */
 .map {
   width: 100%;
-  height: 55vh;
-  height: 55svh;
-  min-height: 280px;
+  height: 42vh;
+  height: 42svh;
+  min-height: 240px;
 }
 
 @media (min-width: 768px) {
