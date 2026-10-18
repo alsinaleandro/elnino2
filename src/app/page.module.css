@@ -45,6 +45,133 @@
   display: none;
 }
 
+/* Celular primero: abajo va la barra de navegación (BottomNav.tsx) y la barra de pestañas de
+   arriba se oculta. Desde tablet es al revés. */
+.tabs {
+  display: none;
+}
+
+.page {
+  /* Lugar para la barra inferior fija (~62px) más el área segura del celular. */
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+}
+
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Por encima de los controles de Leaflet (z-index 1000). */
+  z-index: 1100;
+  display: flex;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 255, 255, 0.97);
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+}
+
+.bottomNavItem {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 54px;
+  padding: 6px 2px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bottomNavItem span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottomNavItemActive {
+  color: #111827;
+  background: #e0f2fe;
+}
+
+.bottomNavIcon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.bottomNavBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1090;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+/* Menú "Más": se abre encima de la barra inferior. */
+.bottomNavSheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+  z-index: 1100;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+}
+
+.bottomNavSheetItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bottomNavSheetItemActive {
+  border-color: #111827;
+  background: #e0f2fe;
+}
+
+.bottomNavItem:focus-visible,
+.bottomNavSheetItem:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: -3px;
+}
+
+@media (min-width: 768px) {
+  .tabs {
+    display: inline-flex;
+  }
+
+  .page {
+    padding-bottom: 24px;
+  }
+
+  .bottomNav,
+  .bottomNavSheet,
+  .bottomNavBackdrop {
+    display: none;
+  }
+}
+
 /* Portada: primera pantalla al abrir la app. Pensada para el alto de un celular. */
 .cover {
   display: flex;
@@ -216,13 +343,21 @@
   background: #f8fafc;
 }
 
-/* El mapa ocupa el alto de pantalla que dejan libre las pestañas, márgenes y la tarjeta
-   de zona (~250px). svh = alto con la barra del navegador visible; vh queda de respaldo. */
+/* El mapa ocupa el alto de pantalla que dejan libre la navegación, márgenes y las capas
+   (~280px en el celular con la barra inferior, ~250px desde tablet). svh = alto con la barra
+   del navegador visible; vh queda de respaldo. */
 .map {
   width: 100%;
-  height: calc(100vh - 250px);
-  height: calc(100svh - 250px);
+  height: calc(100vh - 280px);
+  height: calc(100svh - 280px);
   min-height: 300px;
+}
+
+@media (min-width: 768px) {
+  .map {
+    height: calc(100vh - 250px);
+    height: calc(100svh - 250px);
+  }
 }
 
 .riskSummary {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
 import HelpView from "./HelpView";
 import InfoGuide from "./InfoGuide";
@@ -40,6 +41,9 @@ const TABS = [
   { key: "ayuda", label: "Ayuda" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+// Pestañas fijas de la barra inferior del celular; el resto va en el menú "Más".
+const PRIMARY_TABS: readonly TabKey[] = ["inicio", "riesgo", "crecida", "mapa"];
 
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
@@ -998,6 +1002,8 @@ export default function Home() {
           ) : null}
         </section>
       </main>
+
+      <BottomNav tabs={TABS} primary={PRIMARY_TABS} active={activeTab} onSelect={goToTab} />
     </div>
   );
 }
