@@ -343,14 +343,14 @@
   background: #f8fafc;
 }
 
-/* El mapa ocupa el alto de pantalla que dejan libre la navegación, márgenes y las capas
-   (~280px en el celular con la barra inferior, ~250px desde tablet). svh = alto con la barra
-   del navegador visible; vh queda de respaldo. */
+/* En el celular el mapa ocupa algo más de la mitad de la pantalla, para que debajo se vean las
+   leyendas sin tanto scroll. Desde tablet ocupa el alto que dejan libre pestañas y márgenes
+   (~250px). svh = alto con la barra del navegador visible; vh queda de respaldo. */
 .map {
   width: 100%;
-  height: calc(100vh - 280px);
-  height: calc(100svh - 280px);
-  min-height: 300px;
+  height: 55vh;
+  height: 55svh;
+  min-height: 280px;
 }
 
 @media (min-width: 768px) {
