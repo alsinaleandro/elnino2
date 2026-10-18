@@ -1556,31 +1556,10 @@
 }
 
 @media (max-width: 700px) {
+  /* Solo arriba y a los costados: abajo queda el lugar para la barra inferior. */
   .page {
-    padding: 18px 12px;
-  }
-
-  /* Cinco pestañas en el ancho de un celular: se achican y, en pantallas muy angostas, la barra
-     se desplaza horizontalmente en lugar de ensanchar la página. */
-  .tabs {
-    width: 100%;
-    max-width: 100%;
-    padding: 3px;
-    gap: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .tab {
-    flex: 1 0 auto;
-    padding: 8px 5px;
-    font-size: 0.8rem;
-  }
-
-  .map {
-    height: calc(100vh - 275px);
-    height: calc(100svh - 275px);
-    min-height: 280px;
+    padding-top: 18px;
+    padding-inline: 12px;
   }
 
   .row {
