@@ -1,5 +1,5 @@
 import Image from "next/image";
-import backpackImage from "../../public/images/mochila-emergencia.jpg";
+import backpackImage from "../../public/images/mochila-emergencia.png";
 import styles from "./page.module.css";
 
 // Pestaña Información: resumen de "Antes de que llegue el agua. Guía de preparación familiar frente
@@ -346,7 +346,7 @@ export default function InfoGuide() {
         </p>
         <a
           className={styles.infoBackpack}
-          href="/images/mochila-emergencia.jpg"
+          href="/images/mochila-emergencia.png"
           target="_blank"
           rel="noopener noreferrer"
         >
