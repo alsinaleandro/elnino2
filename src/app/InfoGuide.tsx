@@ -21,7 +21,7 @@ const PHASES: Phase[] = [
         title: "Conocé tu terreno",
         items: [
           ["Hacé un plano de tu casa", "y marcá en él todo lo que pueda ser un peligro si entra agua, también en la vereda y la calle."],
-          ["Averiguá la cota de tu terreno", "respecto de la calle y del barrio. Podés verla en el mapa de cotas de la pestaña Mapa."],
+          ["Averiguá la cota de tu terreno", "respecto de la calle y del barrio."],
           ["Observá qué pasa cuando llueve fuerte:", "si el agua se acumula en el terreno, escurre a la calle o entra desde afuera."],
           ["Si vivís detrás de una defensa,", "averiguá su altura y la diferencia con tu terreno: eso define cuánta agua podría entrar si falla."],
           ["Preguntá a los vecinos más antiguos", "hasta dónde llegó el agua en eventos anteriores."],
@@ -31,7 +31,6 @@ const PHASES: Phase[] = [
       {
         title: "Medidas en la vivienda",
         items: [
-          ["Válvula de corte en la salida cloacal", "para evitar que el agua contaminada vuelva por inodoros y rejillas (requiere plomero)."],
           ["Sellá los ingresos bajos:", "guías en las puertas para colocar tablones o compuertas con burletes, o bolsas de arena."],
           ["Elevá el tablero eléctrico y los tomacorrientes", "por encima del nivel de agua esperable."],
           ["Atá los tanques y garrafas de gas", "a una estructura firme: si flotan, arrancan la cañería y provocan fugas."],
@@ -324,11 +323,6 @@ export default function InfoGuide() {
             </ul>
           </div>
         </div>
-        <p className={styles.infoNote}>
-          <strong>El mito de la defensa:</strong> las defensas resisten eventos de hasta cierta magnitud. Si se superan
-          o fallan, el agua entra muy rápido y sin aviso. Vivir detrás de una defensa requiere la misma preparación,
-          con menos tiempo para reaccionar.
-        </p>
       </section>
 
       <section className={styles.infoCard}>
@@ -340,7 +334,7 @@ export default function InfoGuide() {
           <li>Si mañana hubiera una alerta roja, ¿tu familia sabe qué hacer, a dónde ir y qué llevar?</li>
         </ul>
         <p className={styles.infoNote}>
-          Si respondiste que sí a alguna de las tres primeras, o que no a la última, seguí estos pasos.
+          Si respondiste que sí a alguna de las tres primeras, o que no a la última, sugerimos:
         </p>
       </section>
 

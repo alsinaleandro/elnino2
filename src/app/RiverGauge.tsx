@@ -31,7 +31,8 @@ const ARROW_LENGTH = 14;
 const ARROW_MIN_GAP = 14;
 const ARROW_STAGGER = 18;
 const LABEL_X = ARROW_X + ARROW_LENGTH + ARROW_STAGGER * 2 + 22;
-const LABEL_MIN_GAP = 36;
+// Alto mínimo entre etiquetas: deja lugar al número grande de la altura actual.
+const LABEL_MIN_GAP = 46;
 const MIN_SCALE_TOP = 9;
 
 const formatNumber = (value: number) =>
@@ -47,7 +48,7 @@ function spreadLabels(positions: number[]) {
     result[i] = Math.max(result[i], result[i - 1] + LABEL_MIN_GAP);
   }
 
-  const overflow = result[result.length - 1] - (BOTTOM - 8);
+  const overflow = result[result.length - 1] - (BOTTOM - 14);
   if (overflow > 0) {
     for (let i = result.length - 1; i >= 0; i -= 1) {
       result[i] -= overflow;
@@ -161,7 +162,7 @@ export default function RiverGauge({ actual, alerta, evacuacion }: Props) {
             </text>
             <text
               x={LABEL_X}
-              y={labelY + 8}
+              y={labelY + (marker.strong ? 13 : 8)}
               dominantBaseline="middle"
               className={marker.strong ? styles.riverMarkerValueStrong : styles.riverMarkerValue}
             >

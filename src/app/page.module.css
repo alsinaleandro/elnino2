@@ -637,8 +637,11 @@
   fill: #111827;
 }
 
+/* Altura actual: el dato principal de la escala, bien grande. */
 .riverMarkerValueStrong {
-  font-size: 17px;
+  font-size: 28px;
+  font-weight: 900;
+  fill: #1d4ed8;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1203,6 +1206,12 @@
 .metric strong {
   font-size: 1.15rem;
   color: #111827;
+}
+
+.metric strong.trendValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .geoInfo {

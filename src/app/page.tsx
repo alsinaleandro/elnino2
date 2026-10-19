@@ -14,7 +14,6 @@ import RiskBars, {
   type RiskBarState,
 } from "./RiskBars";
 import RiverGauge from "./RiverGauge";
-import { COTA_LEVELS } from "@/lib/cotas";
 import styles from "./page.module.css";
 
 // Lo mínimo que se usa de una capa de Leaflet para mostrarla u ocultarla.
@@ -149,6 +148,33 @@ const formatMeasurementDate = (value: unknown) => {
   return text.replace(/\b(\d{2})(\d{2})$/, "$1:$2 hs");
 };
 
+// Flecha junto al estado del río: roja hacia arriba si crece ("CRECE", "ALERTA CRECE",
+// "EVACUACION CRECE"), verde hacia abajo si baja. Otros estados (p. ej. estacionario) van sin flecha.
+function TrendArrow({ state }: { state: unknown }) {
+  const text = String(state ?? "").toUpperCase();
+  const trend = text.includes("CRECE") ? "up" : text.includes("BAJA") ? "down" : null;
+  if (!trend) return null;
+
+  // Tamaño y color van en el propio SVG: si el CSS no carga, no se agranda ni queda negra.
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={trend === "up" ? "#d03b3b" : "#0ca30c"}
+      strokeWidth="3.5"
+      style={{ flexShrink: 0 }}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label={trend === "up" ? "El río crece" : "El río baja"}
+    >
+      {trend === "up" ? <path d="M12 20V4M5 11l7-7 7 7" /> : <path d="M12 4v16M5 13l7 7 7-7" />}
+    </svg>
+  );
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const nextTab = TABS[TABS.findIndex((tab) => tab.key === activeTab) + 1];
@@ -189,7 +215,6 @@ export default function Home() {
   // Capas visibles en la pestaña Mapa (casilleros tipo GIS).
   const [showRiskLayer, setShowRiskLayer] = useState(true);
   const [showRainLayer, setShowRainLayer] = useState(false);
-  const [showCotasLayer, setShowCotasLayer] = useState(false);
   const [showDefensaLayer, setShowDefensaLayer] = useState(false);
   const [showBombeoLayer, setShowBombeoLayer] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -197,10 +222,9 @@ export default function Home() {
   const userMarkerRef = useRef<any>(null);
   const riskLayerRef = useRef<LeafletLayer | null>(null);
   const rainLayerRef = useRef<LeafletLayer | null>(null);
-  const cotasLayerRef = useRef<LeafletLayer | null>(null);
   const defensaLayerRef = useRef<LeafletLayer | null>(null);
   const bombeoLayerRef = useRef<LeafletLayer | null>(null);
-  const layerVisibilityRef = useRef({ risk: true, rain: false, cotas: false, defensa: false, bombeo: false });
+  const layerVisibilityRef = useRef({ risk: true, rain: false, defensa: false, bombeo: false });
   const isRiskMatchResolved = !locationLoading && !geoLayer.loading && !geoLayer.error;
   const hasAnyRiskMatch = geoLayer.matches.rio.length > 0 || geoLayer.matches.lluvia.length > 0;
 
@@ -468,9 +492,8 @@ export default function Home() {
       }).addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
-      // cotas abajo, el relleno del río encima y el rayado de precipitaciones sobre él (así se ven
-      // las dos), luego defensas y estaciones de bombeo, y el marcador del usuario arriba de todo.
-      map.createPane("cotasPane").style.zIndex = "410";
+      // el relleno del río abajo y el rayado de precipitaciones sobre él (así se ven las dos),
+      // luego defensas y estaciones de bombeo, y el marcador del usuario arriba de todo.
       map.createPane("riskPane").style.zIndex = "415";
       map.createPane("rainPane").style.zIndex = "420";
       map.createPane("defensaPane").style.zIndex = "430";
@@ -565,42 +588,6 @@ export default function Home() {
           }
         });
 
-      fetch("/api/geo/cotas")
-        .then((response) => response.json())
-        .then((geojsonData) => {
-          if (cancelled) {
-            return;
-          }
-
-          const layer = L.geoJSON(geojsonData, {
-            pane: "cotasPane",
-            style: (feature?: { properties?: { nivel?: number } }) => {
-              const color = COTA_LEVELS[feature?.properties?.nivel ?? 0]?.color ?? "#6b7280";
-              // Borde blanco fino: separa rangos vecinos de tonos parecidos.
-              return { color: "#ffffff", weight: 1, opacity: 0.7, fillColor: color, fillOpacity: 0.7 };
-            },
-            onEachFeature: (
-              feature: { properties?: Record<string, unknown> },
-              layerItem: { bindPopup: (html: string) => void },
-            ) => {
-              const props = feature.properties ?? {};
-              layerItem.bindPopup(
-                `<strong>Cota del terreno: ${props.rango ?? "-"}</strong><br>Hidrómetro Barranqueras: ${props.altura_hidrometro_barranqueras ?? "-"}`,
-              );
-            },
-          });
-
-          cotasLayerRef.current = layer;
-          if (layerVisibilityRef.current.cotas) {
-            layer.addTo(map);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setGeoLayer((current) => ({ ...current, error: "No se pudo cargar el mapa de cotas." }));
-          }
-        });
-
       fetch("/data/capa-defensa.geojson")
         .then((response) => response.json())
         .then((geojsonData) => {
@@ -686,7 +673,6 @@ export default function Home() {
       userMarkerRef.current = null;
       riskLayerRef.current = null;
       rainLayerRef.current = null;
-      cotasLayerRef.current = null;
       defensaLayerRef.current = null;
       bombeoLayerRef.current = null;
       if (mapInstanceRef.current) {
@@ -701,7 +687,6 @@ export default function Home() {
     layerVisibilityRef.current = {
       risk: showRiskLayer,
       rain: showRainLayer,
-      cotas: showCotasLayer,
       defensa: showDefensaLayer,
       bombeo: showBombeoLayer,
     };
@@ -711,7 +696,6 @@ export default function Home() {
     const layers: Array<[LeafletLayer | null, boolean]> = [
       [riskLayerRef.current, showRiskLayer],
       [rainLayerRef.current, showRainLayer],
-      [cotasLayerRef.current, showCotasLayer],
       [defensaLayerRef.current, showDefensaLayer],
       [bombeoLayerRef.current, showBombeoLayer],
     ];
@@ -724,7 +708,7 @@ export default function Home() {
     if (showRainLayer && rainLayerRef.current) {
       addRainPatterns(map.getPane("rainPane"));
     }
-  }, [showRiskLayer, showRainLayer, showCotasLayer, showDefensaLayer, showBombeoLayer]);
+  }, [showRiskLayer, showRainLayer, showDefensaLayer, showBombeoLayer]);
 
   useEffect(() => {
     if (location && userMarkerRef.current) {
@@ -825,14 +809,6 @@ export default function Home() {
                     <label>
                       <input
                         type="checkbox"
-                        checked={showCotasLayer}
-                        onChange={(event) => setShowCotasLayer(event.target.checked)}
-                      />
-                      Mapa de cotas
-                    </label>
-                    <label>
-                      <input
-                        type="checkbox"
                         checked={showDefensaLayer}
                         onChange={(event) => setShowDefensaLayer(event.target.checked)}
                       />
@@ -870,17 +846,6 @@ export default function Home() {
                             className={styles.legendHatch}
                             style={{ color: level.color, borderColor: level.color }}
                           />
-                          {level.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  {showCotasLayer ? (
-                    <div className={styles.cotasLegend} aria-label="Referencias del mapa de cotas">
-                      <span className={styles.cotasLegendTitle}>Cota del terreno (MOP)</span>
-                      {COTA_LEVELS.map((level) => (
-                        <span key={level.file} className={styles.cotasLegendItem}>
-                          <i style={{ background: level.color }} />
                           {level.label}
                         </span>
                       ))}
@@ -969,7 +934,10 @@ export default function Home() {
                     </div>
                     <div className={styles.metric}>
                       <span>Estado</span>
-                      <strong>{formatMetricValue(riskData.tendencia)}</strong>
+                      <strong className={styles.trendValue}>
+                        <TrendArrow state={riskData.tendencia} />
+                        {formatMetricValue(riskData.tendencia)}
+                      </strong>
                     </div>
                   </div>
                   <p className={styles.sourceLink}>
