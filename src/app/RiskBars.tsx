@@ -126,60 +126,103 @@ function RiskBar({ title, segments, state }: { title: string; segments: Segment[
   );
 }
 
-// Qué significa cada nivel, en lenguaje simple. Las variantes rayadas comparten el texto del nivel
-// base (leve regulada → leve, severa temporaria → severa).
-const LIGHT_MEANING =
-  "El agua puede llegar solo en eventos extraordinarios. Se puede vivir y construir, tomando precauciones.";
-const SEVERE_MEANING =
-  "Es una zona inundable. Construir y vivir tiene restricciones: conviene tener un plan y un lugar seguro en altura.";
+// Qué significa cada zona según la resolución de cada mapa, de mayor a menor peligro (como se leen
+// las barras). `tones` son las zonas del mapa que explica cada texto: la leve regulada del mapa del
+// río no tiene texto propio y se explica con la leve.
+type GuideItem = { tones: DangerTone[]; title: string; meaning: string };
+type GuideSection = { key: "rio" | "lluvia"; title: string; items: GuideItem[] };
 
-const LEVEL_MEANINGS: Partial<Record<DangerTone, string>> = {
-  dangerLight: LIGHT_MEANING,
-  dangerRegulated: `${LIGHT_MEANING} Es una variante de la zona leve.`,
-  dangerSevere: SEVERE_MEANING,
-  dangerTemporary: `${SEVERE_MEANING} Es una variante de la zona severa.`,
-  dangerHigh: "El agua llega con frecuencia. No está permitido construir viviendas: es la zona de mayor peligro.",
-};
+const GUIDE_SECTIONS: GuideSection[] = [
+  {
+    key: "rio",
+    title: "Res. 303/17 – Riesgo hídrico por crecida de ríos",
+    items: [
+      {
+        tones: ["dangerHigh"],
+        title: "Zona prohibida",
+        meaning:
+          "Zonas más bajas que la línea de ribera (crecida normal del río), que quedarán cubiertas por agua.",
+      },
+      {
+        tones: ["dangerSevere"],
+        title: "Restricción severa",
+        meaning:
+          "Zonas por encima de la línea de ribera pero que quedaron cubiertas por agua en la inundación de mayo 1998, cuando la altura del Paraná superó los 8,50 m de altura.",
+      },
+      {
+        tones: ["dangerLight", "dangerRegulated"],
+        title: "Restricción leve",
+        meaning:
+          "Superficies ubicadas por encima de la crecida de mayo 1998, cuando la altura del Paraná superó los 8,50 m de altura.",
+      },
+    ],
+  },
+  {
+    key: "lluvia",
+    title: "Res. 121/14 – Riesgo hídrico por precipitaciones",
+    items: [
+      {
+        tones: ["dangerHigh"],
+        title: "Zona prohibida",
+        meaning:
+          "Zonas permanentemente ocupadas por agua (lagunas, ríos o canales de escurrimiento). Ocupación permanente de agua en sistemas hídricos naturales o canales principales de desagüe pluvial.",
+      },
+      {
+        tones: ["dangerSevere"],
+        title: "Restricción severa",
+        meaning:
+          "Áreas de fácil acumulación de agua, con cualquier precipitación, recurrencia de entre 5 y 10 años. No tienen planes directores de desagües pluviales, no se conoce la eficacia de los sistemas de escurrimiento (natural o artificial) para disminuir el riesgo de inundabilidad.",
+      },
+      {
+        tones: ["dangerTemporary"],
+        title: "Restricción severa temporaria",
+        meaning:
+          "Áreas de fácil acumulación de agua con cualquier precipitación, donde se espera que los sistemas de escurrimiento (natural o artificial) disminuya el riesgo de inundabilidad.",
+      },
+      {
+        tones: ["dangerLight"],
+        title: "Restricción leve",
+        meaning:
+          "No se inundan o lo hacen con muy poca frecuencia, con elevadas precipitaciones y más de 10 años de recurrencia.",
+      },
+    ],
+  },
+];
 
-// Todas las zonas, de mayor a menor peligro (como se leen las barras).
-const GUIDE_TONES: DangerTone[] = ["dangerHigh", "dangerSevere", "dangerTemporary", "dangerRegulated", "dangerLight"];
-
-const zoneTitle = (tone: DangerTone) =>
-  [...RIVER_SEGMENTS, ...RAIN_SEGMENTS].find((segment) => segment.tone === tone)?.title ?? "";
-
-// Explica todas las zonas y resalta aquella donde está el usuario en cada mapa.
+// Explica las zonas de cada mapa y resalta aquella donde está el usuario.
 export function RiskLevelsGuide({ rio, lluvia }: Props) {
-  const userMaps = (tone: DangerTone) =>
-    [
-      rio.tone === tone ? "Crecida del río Negro" : null,
-      lluvia.tone === tone ? "Precipitaciones" : null,
-    ].filter(Boolean);
+  const userTones = { rio: rio.tone, lluvia: lluvia.tone };
 
   return (
     <section className={styles.riskGuide} aria-label="Qué significa cada zona de riesgo">
       <h3 className={styles.riskGuideTitle}>¿Qué significa tu zona?</h3>
-      <dl className={styles.riskGuideList}>
-        {GUIDE_TONES.map((tone) => {
-          const maps = userMaps(tone);
-          return (
-            <div
-              key={tone}
-              className={`${styles.riskGuideItem} ${maps.length > 0 ? styles.riskGuideItemActive : ""}`}
-            >
-              <dt>
-                <i style={{ background: DANGER_COLORS[tone].fill }} aria-hidden="true" />
-                {zoneTitle(tone)}
-              </dt>
-              <dd>
-                {maps.length > 0 ? (
-                  <span className={styles.riskGuideMaps}>Estás acá: {maps.join(" y ")}</span>
-                ) : null}
-                {LEVEL_MEANINGS[tone]}
-              </dd>
-            </div>
-          );
-        })}
-      </dl>
+      {GUIDE_SECTIONS.map((section) => (
+        <div key={section.key} className={styles.riskGuideSection}>
+          <h4 className={styles.riskGuideSubtitle}>{section.title}</h4>
+          <dl className={styles.riskGuideList}>
+            {section.items.map((item) => {
+              const userTone = userTones[section.key];
+              const isUserZone = userTone !== null && item.tones.includes(userTone);
+              return (
+                <div
+                  key={item.title}
+                  className={`${styles.riskGuideItem} ${isUserZone ? styles.riskGuideItemActive : ""}`}
+                >
+                  <dt>
+                    {/* Mismo color (y rayas) que la zona en la barra. */}
+                    <i className={styles[item.tones[0]]} aria-hidden="true" />
+                    {item.title}
+                  </dt>
+                  <dd>
+                    {isUserZone ? <span className={styles.riskGuideMaps}>Estás acá</span> : null}
+                    {item.meaning}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      ))}
     </section>
   );
 }
@@ -187,7 +230,7 @@ export function RiskLevelsGuide({ rio, lluvia }: Props) {
 export default function RiskBars({ rio, lluvia }: Props) {
   return (
     <div className={styles.riskBars}>
-      <RiskBar title="Crecida del río Negro" segments={RIVER_SEGMENTS} state={rio} />
+      <RiskBar title="Crecida de Ríos" segments={RIVER_SEGMENTS} state={rio} />
       <RiskBar title="Precipitaciones" segments={RAIN_SEGMENTS} state={lluvia} />
     </div>
   );

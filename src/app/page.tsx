@@ -23,7 +23,7 @@ type RiskMatch = { id?: string | number; name?: string; properties?: Record<stri
 
 // Las dos capas de riesgo hídrico; la clave coincide con la respuesta de /api/geo/contains.
 const RISK_MAPS = [
-  { key: "rio", title: "Riesgo por crecida del río Negro" },
+  { key: "rio", title: "Riesgo por crecida de ríos" },
   { key: "lluvia", title: "Riesgo por precipitaciones" },
 ] as const;
 type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
@@ -645,7 +645,7 @@ export default function Home() {
             onEachFeature: (feature: any, layerItem: any) => {
               const category = feature?.properties?.categoria ?? "Zona de riesgo";
               const area = feature?.properties?.area_ha ?? "-";
-              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida del río Negro<br>Área: ${area} ha`);
+              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida de Ríos<br>Área: ${area} ha`);
             },
           });
 
@@ -1076,7 +1076,7 @@ export default function Home() {
                     <div ref={mapContainerRef} className={styles.map} />
                   </div>
                   {showRiskLayer ? (
-                    <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida del río Negro">
+                    <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida de ríos">
                       <span className={styles.cotasLegendTitle}>Riesgo por crecida, Resolución APA 303/17</span>
                       {RIVER_LEVELS.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>

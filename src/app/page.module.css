@@ -273,6 +273,27 @@
   font-weight: 800;
 }
 
+.riskGuideSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Separa la guía del mapa del río de la de precipitaciones. */
+.riskGuideSection + .riskGuideSection {
+  padding-top: 12px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.riskGuideSubtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .riskGuideList {
   display: flex;
   flex-direction: column;
