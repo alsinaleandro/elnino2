@@ -279,6 +279,15 @@
   gap: 10px;
 }
 
+/* Zona donde está el usuario: recuadro para destacarla del resto. */
+.riskGuideItemActive {
+  margin: 0 -10px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
 .riskGuideItem dt {
   display: flex;
   align-items: center;

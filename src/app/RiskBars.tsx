@@ -141,42 +141,44 @@ const LEVEL_MEANINGS: Partial<Record<DangerTone, string>> = {
   dangerHigh: "El agua llega con frecuencia. No está permitido construir viviendas: es la zona de mayor peligro.",
 };
 
+// Todas las zonas, de mayor a menor peligro (como se leen las barras).
+const GUIDE_TONES: DangerTone[] = ["dangerHigh", "dangerSevere", "dangerTemporary", "dangerRegulated", "dangerLight"];
+
 const zoneTitle = (tone: DangerTone) =>
   [...RIVER_SEGMENTS, ...RAIN_SEGMENTS].find((segment) => segment.tone === tone)?.title ?? "";
 
-// Explica solo la zona donde está el usuario en cada mapa; si es la misma en los dos, una vez.
+// Explica todas las zonas y resalta aquella donde está el usuario en cada mapa.
 export function RiskLevelsGuide({ rio, lluvia }: Props) {
-  const zones: Array<{ maps: string; tone: DangerTone }> = [];
-  for (const [maps, state] of [
-    ["Crecida del río Negro", rio],
-    ["Precipitaciones", lluvia],
-  ] as const) {
-    if (!state.tone || !LEVEL_MEANINGS[state.tone]) continue;
-    const same = zones.find((zone) => zone.tone === state.tone);
-    if (same) same.maps += " y precipitaciones";
-    else zones.push({ maps, tone: state.tone });
-  }
-
-  if (zones.length === 0) {
-    return null;
-  }
+  const userMaps = (tone: DangerTone) =>
+    [
+      rio.tone === tone ? "Crecida del río Negro" : null,
+      lluvia.tone === tone ? "Precipitaciones" : null,
+    ].filter(Boolean);
 
   return (
-    <section className={styles.riskGuide} aria-label="Qué significa tu zona de riesgo">
+    <section className={styles.riskGuide} aria-label="Qué significa cada zona de riesgo">
       <h3 className={styles.riskGuideTitle}>¿Qué significa tu zona?</h3>
       <dl className={styles.riskGuideList}>
-        {zones.map(({ maps, tone }) => (
-          <div key={tone} className={styles.riskGuideItem}>
-            <dt>
-              <i style={{ background: DANGER_COLORS[tone].fill }} aria-hidden="true" />
-              {zoneTitle(tone)}
-            </dt>
-            <dd>
-              <span className={styles.riskGuideMaps}>{maps}</span>
-              {LEVEL_MEANINGS[tone]}
-            </dd>
-          </div>
-        ))}
+        {GUIDE_TONES.map((tone) => {
+          const maps = userMaps(tone);
+          return (
+            <div
+              key={tone}
+              className={`${styles.riskGuideItem} ${maps.length > 0 ? styles.riskGuideItemActive : ""}`}
+            >
+              <dt>
+                <i style={{ background: DANGER_COLORS[tone].fill }} aria-hidden="true" />
+                {zoneTitle(tone)}
+              </dt>
+              <dd>
+                {maps.length > 0 ? (
+                  <span className={styles.riskGuideMaps}>Estás acá: {maps.join(" y ")}</span>
+                ) : null}
+                {LEVEL_MEANINGS[tone]}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
     </section>
   );
