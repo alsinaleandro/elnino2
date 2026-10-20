@@ -33,9 +33,9 @@ type BaseMapKey = "osm" | "satelite";
 const TABS = [
   { key: "inicio", label: "Inicio" },
   { key: "riesgo", label: "Riesgo" },
+  { key: "mapa", label: "Mapa" },
   { key: "crecida", label: "Crecida" },
   { key: "info", label: "Información" },
-  { key: "mapa", label: "Mapa" },
   { key: "pronosticos", label: "Pronósticos" },
   { key: "nubes", label: "Nubes" },
   { key: "ayuda", label: "Ayuda" },
@@ -43,7 +43,7 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 // Pestañas fijas de la barra inferior del celular; el resto va en el menú "Más".
-const PRIMARY_TABS: readonly TabKey[] = ["inicio", "riesgo", "crecida", "mapa"];
+const PRIMARY_TABS: readonly TabKey[] = ["inicio", "riesgo", "mapa", "crecida"];
 
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
