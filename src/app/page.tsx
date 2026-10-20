@@ -117,6 +117,12 @@ type MapPoint = { latitude: number; longitude: number; label: string; exact?: bo
 
 const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas"] as const;
 
+// Un toque con el dedo sobre el mapa: hasta este movimiento y esta duración no es un arrastre.
+const TAP_TOLERANCE_PX = 12;
+const TAP_MAX_MS = 600;
+// Tras un toque, Leaflet puede disparar además su propio "click": se ignora en este lapso.
+const TAP_CLICK_DEDUPE_MS = 700;
+
 // Centro de Resistencia: vista inicial del mapa si todavía no hay ubicación del usuario.
 const AMGR_CENTER: [number, number] = [-27.4514, -58.9867];
 
@@ -500,6 +506,8 @@ export default function Home() {
     }
 
     let cancelled = false;
+    // Quita los listeners de toque que se agregan al contenedor del mapa.
+    const listeners = new AbortController();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const initializeMap = (L: any) => {
@@ -558,13 +566,71 @@ export default function Home() {
       }
 
       // Tocar el mapa consulta el riesgo de ese punto.
-      map.on("click", (event: { latlng: { lat: number; lng: number } }) => {
+      const selectMapPoint = (latlng: { lat: number; lng: number }) => {
         setSelectedPoint({
-          latitude: event.latlng.lat,
-          longitude: event.latlng.lng,
+          latitude: latlng.lat,
+          longitude: latlng.lng,
           label: "Punto señalado en el mapa",
         });
+      };
+      let lastTapAt = 0;
+
+      map.on("click", (event: { latlng: { lat: number; lng: number } }) => {
+        // El toque con el dedo ya lo resolvió el detector de abajo.
+        if (Date.now() - lastTapAt < TAP_CLICK_DEDUPE_MS) return;
+        selectMapPoint(event.latlng);
       });
+
+      // En el celular el dedo casi siempre se mueve unos píxeles al tocar, y Leaflet lo toma
+      // como arrastre del mapa (tolera 3 px) y no dispara "click". Se detecta el toque a mano:
+      // un solo dedo, poco movimiento y breve. Pellizcos y arrastres no cuentan.
+      const container: HTMLElement = map.getContainer();
+      const touches = new Map<number, { x: number; y: number; time: number }>();
+      let multiTouch = false;
+
+      container.addEventListener(
+        "pointerdown",
+        (event) => {
+          if (event.pointerType !== "touch") return;
+          if (touches.size > 0) multiTouch = true;
+          touches.set(event.pointerId, { x: event.clientX, y: event.clientY, time: event.timeStamp });
+        },
+        { capture: true, signal: listeners.signal },
+      );
+
+      container.addEventListener(
+        "pointerup",
+        (event) => {
+          const start = touches.get(event.pointerId);
+          touches.delete(event.pointerId);
+          const wasMultiTouch = multiTouch;
+          if (touches.size === 0) multiTouch = false;
+          if (!start || wasMultiTouch) return;
+
+          const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y);
+          const target = event.target as Element | null;
+          if (
+            moved > TAP_TOLERANCE_PX ||
+            event.timeStamp - start.time > TAP_MAX_MS ||
+            target?.closest(".leaflet-control, .leaflet-popup")
+          ) {
+            return;
+          }
+
+          lastTapAt = Date.now();
+          selectMapPoint(map.mouseEventToLatLng(event));
+        },
+        { capture: true, signal: listeners.signal },
+      );
+
+      container.addEventListener(
+        "pointercancel",
+        (event) => {
+          touches.delete(event.pointerId);
+          if (touches.size === 0) multiTouch = false;
+        },
+        { capture: true, signal: listeners.signal },
+      );
 
       fetch("/api/geo/capa")
         .then((response) => response.json())
@@ -721,6 +787,7 @@ export default function Home() {
 
     return () => {
       cancelled = true;
+      listeners.abort();
       userMarkerRef.current = null;
       pointMarkerRef.current = null;
       riskLayerRef.current = null;
