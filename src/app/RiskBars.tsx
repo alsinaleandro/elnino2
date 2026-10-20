@@ -189,6 +189,11 @@ const GUIDE_SECTIONS: GuideSection[] = [
   },
 ];
 
+// Significado de una zona de un mapa (lo usa también la pestaña Mapa).
+export const getZoneMeaning = (map: GuideSection["key"], tone: DangerTone) =>
+  GUIDE_SECTIONS.find((section) => section.key === map)?.items.find((item) => item.tones.includes(tone))
+    ?.meaning ?? null;
+
 // Explica las zonas de cada mapa y resalta aquella donde está el usuario.
 export function RiskLevelsGuide({ rio, lluvia }: Props) {
   const userTones = { rio: rio.tone, lluvia: lluvia.tone };

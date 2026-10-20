@@ -9,6 +9,7 @@ import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
 import RiskBars, {
   getDangerLevel,
+  getZoneMeaning,
   RiskLevelsGuide,
   type DangerTone,
   type RiskBarState,
@@ -120,7 +121,8 @@ const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas"]
 // Un toque con el dedo sobre el mapa: hasta este movimiento y esta duración no es un arrastre.
 const TAP_TOLERANCE_PX = 12;
 const TAP_MAX_MS = 600;
-// Tras un toque, Leaflet puede disparar además su propio "click": se ignora en este lapso.
+// Tras un toque (o un doble toque), Leaflet puede disparar además su propio "dblclick": se
+// ignora en este lapso.
 const TAP_CLICK_DEDUPE_MS = 700;
 
 // Centro de Resistencia: vista inicial del mapa si todavía no hay ubicación del usuario.
@@ -528,6 +530,8 @@ export default function Home() {
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
         scrollWheelZoom: true,
+        // El doble clic señala un punto (ver abajo); el zoom queda en la rueda y los botones.
+        doubleClickZoom: false,
       }).setView(center, 16);
 
       // Se crean los dos mapas base y se muestra el elegido; el otro se agrega al cambiar la opción.
@@ -575,7 +579,9 @@ export default function Home() {
       };
       let lastTapAt = 0;
 
-      map.on("click", (event: { latlng: { lat: number; lng: number } }) => {
+      // Con el mouse se señala con doble clic: el clic simple queda para abrir el cartel de
+      // cada zona sin mover el punto consultado.
+      map.on("dblclick", (event: { latlng: { lat: number; lng: number } }) => {
         // El toque con el dedo ya lo resolvió el detector de abajo.
         if (Date.now() - lastTapAt < TAP_CLICK_DEDUPE_MS) return;
         selectMapPoint(event.latlng);
@@ -644,8 +650,7 @@ export default function Home() {
             style: riverZoneStyle,
             onEachFeature: (feature: any, layerItem: any) => {
               const category = feature?.properties?.categoria ?? "Zona de riesgo";
-              const area = feature?.properties?.area_ha ?? "-";
-              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida de Ríos<br>Área: ${area} ha`);
+              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida de Ríos (Res. 303/17)`);
             },
           });
 
@@ -686,7 +691,7 @@ export default function Home() {
             ) => {
               const props = feature.properties ?? {};
               layerItem.bindPopup(
-                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Precipitaciones (Res. 121/14)<br>Área: ${escapeHtml(props.area_ha ?? "-")} ha`,
+                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Precipitaciones (Res. 121/14)`,
               );
             },
           });
@@ -1156,7 +1161,9 @@ export default function Home() {
                     <button type="submit" className={styles.addressButton} disabled={addressSearch.loading}>
                       {addressSearch.loading ? "Buscando..." : "Buscar"}
                     </button>
-                    <p className={styles.addressHint}>O tocá el mapa para señalar un punto.</p>
+                    <p className={styles.addressHint}>
+                      O tocá el mapa (doble clic con el mouse) para señalar un punto.
+                    </p>
                   </form>
                   {addressSearch.error ? <p className={styles.error}>{addressSearch.error}</p> : null}
                 </>
@@ -1198,7 +1205,7 @@ export default function Home() {
                       const category = typeof match?.properties?.categoria === "string"
                         ? match.properties.categoria
                         : null;
-                      const area = match?.properties?.area_ha ?? "-";
+                      const meaning = category ? getZoneMeaning(key, getDangerLevel(category).tone) : null;
                       const color = levelColor(key === "rio" ? RIVER_LEVELS : RAIN_LEVELS, category ?? undefined);
 
                       return (
@@ -1210,11 +1217,7 @@ export default function Home() {
                               {category ?? "Fuera de zona de riesgo"}
                             </strong>
                           </div>
-                          {category ? (
-                            <div className={styles.geoMatchMeta}>
-                              <span>Área de la zona: {String(area)} ha</span>
-                            </div>
-                          ) : null}
+                          {meaning ? <p className={styles.geoMatchMeta}>{meaning}</p> : null}
                         </div>
                       );
                     })}
