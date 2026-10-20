@@ -1030,7 +1030,7 @@ export default function Home() {
                         checked={baseMap === "osm"}
                         onChange={() => setBaseMap("osm")}
                       />
-                      OpenStreetMap
+                      OSM
                     </label>
                     <label>
                       <input
