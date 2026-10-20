@@ -722,13 +722,6 @@
   opacity: 0.85;
 }
 
-/* Muestra rayada de la capa de precipitaciones; el color del nivel llega por `color`. */
-.cotasLegendItem i.legendHatch {
-  opacity: 1;
-  border: 1.5px solid;
-  background: repeating-linear-gradient(-45deg, currentColor 0 2px, transparent 2px 5px);
-}
-
 .cotaCard {
   display: flex;
   flex-direction: column;

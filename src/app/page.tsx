@@ -27,6 +27,7 @@ const RISK_MAPS = [
   { key: "lluvia", title: "Riesgo por precipitaciones" },
 ] as const;
 type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
+type BaseMapKey = "osm" | "satelite";
 
 // Pestañas en el orden en que se muestran; la app abre en la portada ("inicio").
 const TABS = [
@@ -56,8 +57,8 @@ const escapeHtml = (value: unknown) =>
   String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 // Colores de las dos capas de riesgo en el mapa, de menor a mayor peligro. Cada capa tiene su
-// propia familia de colores para poder verlas juntas: el río es un relleno azul y las
-// precipitaciones un rayado cálido sobre fondo casi transparente, que deja ver el azul debajo.
+// propia familia de colores para poder verlas juntas: el río en azules y las precipitaciones en
+// colores cálidos, ambos con relleno semitransparente.
 type MapLevel = { tone: DangerTone; label: string; color: string };
 
 const RIVER_LEVELS: MapLevel[] = [
@@ -86,47 +87,10 @@ const riverZoneStyle = (feature?: ZoneFeature) => {
   return { color, weight: 1.5, opacity: 0.9, fillColor: color, fillOpacity: 0.45 };
 };
 
-const rainPatternId = (color: string) => `lluvia-rayas-${color.slice(1)}`;
-
 const rainZoneStyle = (feature?: ZoneFeature) => {
   const color = levelColor(RAIN_LEVELS, feature?.properties?.categoria);
-  return { color, weight: 2, opacity: 0.95, fillColor: `url(#${rainPatternId(color)})`, fillOpacity: 1 };
+  return { color, weight: 2, opacity: 0.95, fillColor: color, fillOpacity: 0.45 };
 };
-
-// Leaflet dibuja los polígonos de cada pane en un <svg> propio: se le agregan los patrones de
-// rayas que usa la capa de precipitaciones como relleno.
-function addRainPatterns(pane: HTMLElement) {
-  const svg: SVGSVGElement | null = pane.querySelector("svg");
-  if (!svg) {
-    return;
-  }
-
-  const ns = "http://www.w3.org/2000/svg";
-  const defs = svg.querySelector("defs") ?? svg.insertBefore(document.createElementNS(ns, "defs"), svg.firstChild);
-
-  for (const color of [...RAIN_LEVELS.map((level) => level.color), NO_LEVEL_COLOR]) {
-    if (svg.querySelector(`#${rainPatternId(color)}`)) continue;
-
-    const pattern = document.createElementNS(ns, "pattern");
-    pattern.setAttribute("id", rainPatternId(color));
-    pattern.setAttribute("width", "8");
-    pattern.setAttribute("height", "8");
-    pattern.setAttribute("patternUnits", "userSpaceOnUse");
-    pattern.setAttribute("patternTransform", "rotate(-45)");
-
-    // Fondo apenas teñido + raya de 3 px del color del nivel.
-    for (const [width, opacity] of [[8, 0.15], [3, 0.9]] as const) {
-      const rect = document.createElementNS(ns, "rect");
-      rect.setAttribute("width", String(width));
-      rect.setAttribute("height", "8");
-      rect.setAttribute("fill", color);
-      rect.setAttribute("fill-opacity", String(opacity));
-      pattern.appendChild(rect);
-    }
-
-    defs.appendChild(pattern);
-  }
-}
 
 // Con esta precisión se deja de escuchar al GPS.
 const GOOD_ACCURACY_METERS = 25;
@@ -225,6 +189,10 @@ export default function Home() {
   const defensaLayerRef = useRef<LeafletLayer | null>(null);
   const bombeoLayerRef = useRef<LeafletLayer | null>(null);
   const layerVisibilityRef = useRef({ risk: true, rain: false, defensa: false, bombeo: false });
+  // Mapa base de la pestaña Mapa: calles (OpenStreetMap) o imagen satelital.
+  const [baseMap, setBaseMap] = useState<BaseMapKey>("osm");
+  const baseMapRef = useRef<BaseMapKey>("osm");
+  const baseLayersRef = useRef<Record<BaseMapKey, LeafletLayer> | null>(null);
   const isRiskMatchResolved = !locationLoading && !geoLayer.loading && !geoLayer.error;
   const hasAnyRiskMatch = geoLayer.matches.rio.length > 0 || geoLayer.matches.lluvia.length > 0;
 
@@ -485,14 +453,25 @@ export default function Home() {
         scrollWheelZoom: true,
       }).setView([location.latitude, location.longitude], 16);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors",
-        // 19 = zoom máximo con tiles propios de OpenStreetMap (nivel de cuadra / lote).
-        maxZoom: 19,
-      }).addTo(map);
+      // Se crean los dos mapas base y se muestra el elegido; el otro se agrega al cambiar la opción.
+      baseLayersRef.current = {
+        osm: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "&copy; OpenStreetMap contributors",
+          // 19 = zoom máximo con tiles propios de OpenStreetMap (nivel de cuadra / lote).
+          maxZoom: 19,
+        }),
+        satelite: L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+          {
+            attribution: "Imágenes &copy; Esri, Maxar, Earthstar Geographics",
+            maxZoom: 19,
+          },
+        ),
+      };
+      baseLayersRef.current[baseMapRef.current].addTo(map);
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
-      // el relleno del río abajo y el rayado de precipitaciones sobre él (así se ven las dos),
+      // el relleno del río abajo y el de precipitaciones sobre él (así se ven las dos),
       // luego defensas y estaciones de bombeo, y el marcador del usuario arriba de todo.
       map.createPane("riskPane").style.zIndex = "415";
       map.createPane("rainPane").style.zIndex = "420";
@@ -502,7 +481,7 @@ export default function Home() {
 
       const userMarker = L.circleMarker([location.latitude, location.longitude], {
         pane: "userPane",
-        // Negro con borde blanco: se distingue sobre el relleno azul del río y el rayado cálido
+        // Negro con borde blanco: se distingue sobre el relleno azul del río y el cálido
         // de precipitaciones.
         radius: 9,
         color: "#ffffff",
@@ -558,7 +537,6 @@ export default function Home() {
             return;
           }
 
-          // Relleno rayado: un patrón SVG que se agrega al SVG donde Leaflet dibuja la capa.
           const layer = L.geoJSON(geojsonData, {
             pane: "rainPane",
             style: rainZoneStyle,
@@ -576,7 +554,6 @@ export default function Home() {
           rainLayerRef.current = layer;
           if (layerVisibilityRef.current.rain) {
             layer.addTo(map);
-            addRainPatterns(map.getPane("rainPane"));
           }
         })
         .catch(() => {
@@ -675,6 +652,7 @@ export default function Home() {
       rainLayerRef.current = null;
       defensaLayerRef.current = null;
       bombeoLayerRef.current = null;
+      baseLayersRef.current = null;
       if (mapInstanceRef.current) {
         removeMap(mapInstanceRef.current);
         mapInstanceRef.current = null;
@@ -704,11 +682,20 @@ export default function Home() {
       if (visible && !map.hasLayer(layer)) layer.addTo(map);
       if (!visible && map.hasLayer(layer)) layer.remove();
     }
-
-    if (showRainLayer && rainLayerRef.current) {
-      addRainPatterns(map.getPane("rainPane"));
-    }
   }, [showRiskLayer, showRainLayer, showDefensaLayer, showBombeoLayer]);
+
+  // Cambiar el mapa base sin volver a crear el mapa.
+  useEffect(() => {
+    baseMapRef.current = baseMap;
+    const map = mapInstanceRef.current;
+    const baseLayers = baseLayersRef.current;
+    if (!map || !baseLayers) return;
+
+    for (const [key, layer] of Object.entries(baseLayers) as Array<[BaseMapKey, LeafletLayer]>) {
+      if (key === baseMap && !map.hasLayer(layer)) layer.addTo(map);
+      if (key !== baseMap && map.hasLayer(layer)) layer.remove();
+    }
+  }, [baseMap]);
 
   useEffect(() => {
     if (location && userMarkerRef.current) {
@@ -789,6 +776,27 @@ export default function Home() {
               {activeTab === "mapa" && location ? (
                 <>
                   <fieldset className={styles.layerToggles}>
+                    <legend>Mapa base</legend>
+                    <label>
+                      <input
+                        type="radio"
+                        name="baseMap"
+                        checked={baseMap === "osm"}
+                        onChange={() => setBaseMap("osm")}
+                      />
+                      OpenStreetMap
+                    </label>
+                    <label>
+                      <input
+                        type="radio"
+                        name="baseMap"
+                        checked={baseMap === "satelite"}
+                        onChange={() => setBaseMap("satelite")}
+                      />
+                      Satelital
+                    </label>
+                  </fieldset>
+                  <fieldset className={styles.layerToggles}>
                     <legend>Capas</legend>
                     <label>
                       <input
@@ -842,10 +850,7 @@ export default function Home() {
                       <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones</span>
                       {RAIN_LEVELS.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
-                          <i
-                            className={styles.legendHatch}
-                            style={{ color: level.color, borderColor: level.color }}
-                          />
+                          <i style={{ background: level.color }} />
                           {level.label}
                         </span>
                       ))}
