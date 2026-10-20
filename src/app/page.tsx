@@ -972,6 +972,9 @@ export default function Home() {
                 Esta app está diseñada para el <strong>AMGR</strong> (Área Metropolitana del Gran Resistencia):
                 Resistencia, Barranqueras, Fontana y Puerto Vilelas.
               </p>
+              <p className={styles.coverNote}>
+                Los datos utilizados se corresponden con la información oficial disponible.
+              </p>
               {nextTab ? (
                 <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
                   Siguiente
