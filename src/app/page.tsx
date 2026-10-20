@@ -804,7 +804,7 @@ export default function Home() {
                         checked={showRiskLayer}
                         onChange={(event) => setShowRiskLayer(event.target.checked)}
                       />
-                      Riesgo por crecida del río Negro
+                      Riesgo por crecida, Resolución APA 303/17
                     </label>
                     <label>
                       <input
@@ -812,7 +812,7 @@ export default function Home() {
                         checked={showRainLayer}
                         onChange={(event) => setShowRainLayer(event.target.checked)}
                       />
-                      Riesgo por precipitaciones Resolución APA 121/14
+                      Riesgo por precipitaciones, Resolución APA 121/14
                     </label>
                     <label>
                       <input
@@ -836,7 +836,7 @@ export default function Home() {
                   </div>
                   {showRiskLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida del río Negro">
-                      <span className={styles.cotasLegendTitle}>Riesgo por crecida del río Negro</span>
+                      <span className={styles.cotasLegendTitle}>Riesgo por crecida, Resolución APA 303/17</span>
                       {RIVER_LEVELS.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
                           <i style={{ background: level.color }} />
@@ -847,7 +847,7 @@ export default function Home() {
                   ) : null}
                   {showRainLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por precipitaciones">
-                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones Resolución APA 121/14</span>
+                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones, Resolución APA 121/14</span>
                       {RAIN_LEVELS.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
                           <i style={{ background: level.color }} />
