@@ -812,7 +812,7 @@ export default function Home() {
                         checked={showRainLayer}
                         onChange={(event) => setShowRainLayer(event.target.checked)}
                       />
-                      Riesgo por precipitaciones
+                      Riesgo por precipitaciones Resolución APA 121/14
                     </label>
                     <label>
                       <input
@@ -847,7 +847,7 @@ export default function Home() {
                   ) : null}
                   {showRainLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por precipitaciones">
-                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones</span>
+                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones Resolución APA 121/14</span>
                       {RAIN_LEVELS.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
                           <i style={{ background: level.color }} />
