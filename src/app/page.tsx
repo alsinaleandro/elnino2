@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
 import HelpView from "./HelpView";
@@ -96,6 +96,70 @@ const rainZoneStyle = (feature?: ZoneFeature) => {
 const GOOD_ACCURACY_METERS = 25;
 const GPS_WATCH_MAX_MS = 45000;
 
+// Zonas de cada mapa de riesgo que contienen un punto (respuesta de /api/geo/contains).
+type RiskLookup = { loading: boolean; error: string | null; matches: Record<RiskMapKey, RiskMatch[]> };
+
+async function fetchRiskMatches(latitude: number, longitude: number): Promise<Record<RiskMapKey, RiskMatch[]>> {
+  const response = await fetch(`/api/geo/contains?lng=${longitude}&lat=${latitude}`);
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload?.error || "No se pudieron consultar las capas de riesgo.");
+  }
+
+  return { rio: payload.rio?.matches ?? [], lluvia: payload.lluvia?.matches ?? [] };
+}
+
+// Punto que el usuario consulta en la pestaña Mapa (dirección buscada o lugar tocado en el mapa).
+// `exact` es false cuando la altura no figura en OpenStreetMap y se marcó un punto de la calle;
+// `centerMap` lleva el mapa hasta el punto (al buscar una dirección, no al tocar el mapa).
+type MapPoint = { latitude: number; longitude: number; label: string; exact?: boolean; centerMap?: boolean };
+
+const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas"] as const;
+
+// Centro de Resistencia: vista inicial del mapa si todavía no hay ubicación del usuario.
+const AMGR_CENTER: [number, number] = [-27.4514, -58.9867];
+
+const POINT_PIN_HTML =
+  '<svg width="30" height="40" viewBox="0 0 30 40" aria-hidden="true">' +
+  '<path d="M15 39C15 39 28 24 28 14A13 13 0 0 0 2 14C2 24 15 39 15 39Z" fill="#7c3aed" stroke="#ffffff" stroke-width="2.5"/>' +
+  '<circle cx="15" cy="14" r="5" fill="#ffffff"/></svg>';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createUserMarker = (L: any, map: unknown, location: { latitude: number; longitude: number }) => {
+  const marker = L.circleMarker([location.latitude, location.longitude], {
+    pane: "userPane",
+    // Negro con borde blanco: se distingue sobre el relleno azul del río y el cálido
+    // de precipitaciones.
+    radius: 9,
+    color: "#ffffff",
+    fillColor: "#111827",
+    fillOpacity: 1,
+    weight: 3,
+  });
+  marker.addTo(map);
+  marker.bindPopup("Tu ubicación actual");
+  return marker;
+};
+
+// Pin violeta para el punto consultado: no se confunde con los colores de las capas.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const createPointMarker = (L: any, map: unknown, point: MapPoint) => {
+  const marker = L.marker([point.latitude, point.longitude], {
+    pane: "pointPane",
+    icon: L.divIcon({
+      className: "map-point-pin",
+      html: POINT_PIN_HTML,
+      iconSize: [30, 40],
+      iconAnchor: [15, 39],
+      popupAnchor: [0, -36],
+    }),
+  });
+  marker.addTo(map);
+  marker.bindPopup(escapeHtml(point.label));
+  return marker;
+};
+
 const formatMetricValue = (value: unknown) => {
   if (value === null || value === undefined || String(value).trim() === "") {
     return "Sin dato";
@@ -167,14 +231,27 @@ export default function Home() {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   // Zonas de cada mapa de riesgo (río y precipitaciones) que contienen la ubicación del usuario.
-  const [geoLayer, setGeoLayer] = useState<{
-    loading: boolean;
-    error: string | null;
-    matches: Record<RiskMapKey, RiskMatch[]>;
-  }>({
+  const [geoLayer, setGeoLayer] = useState<RiskLookup>({
     loading: false,
     error: null,
     matches: { rio: [], lluvia: [] },
+  });
+  // Punto consultado en la pestaña Mapa; mientras sea null se muestra el riesgo de la ubicación
+  // del usuario. La pestaña Riesgo siempre usa la ubicación del usuario.
+  const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
+  const selectedPointRef = useRef<MapPoint | null>(null);
+  const pointMarkerRef = useRef<LeafletLayer | null>(null);
+  const [pointRisk, setPointRisk] = useState<RiskLookup>({
+    loading: false,
+    error: null,
+    matches: { rio: [], lluvia: [] },
+  });
+  const [addressLocalidad, setAddressLocalidad] = useState<string>(LOCALIDADES[0]);
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressNumber, setAddressNumber] = useState("");
+  const [addressSearch, setAddressSearch] = useState<{ loading: boolean; error: string | null }>({
+    loading: false,
+    error: null,
   });
   // Capas visibles en la pestaña Mapa (casilleros tipo GIS).
   const [showRiskLayer, setShowRiskLayer] = useState(true);
@@ -194,7 +271,6 @@ export default function Home() {
   const baseMapRef = useRef<BaseMapKey>("osm");
   const baseLayersRef = useRef<Record<BaseMapKey, LeafletLayer> | null>(null);
   const isRiskMatchResolved = !locationLoading && !geoLayer.loading && !geoLayer.error;
-  const hasAnyRiskMatch = geoLayer.matches.rio.length > 0 || geoLayer.matches.lluvia.length > 0;
 
   // Estado de cada barra de la pestaña Riesgo, calculado de forma independiente por mapa.
   const riskBarState = (key: RiskMapKey): RiskBarState => {
@@ -376,22 +452,10 @@ export default function Home() {
             : { loading: true, error: null, matches: { rio: [], lluvia: [] } },
         );
 
-        const response = await fetch(
-          `/api/geo/contains?lng=${longitude}&lat=${latitude}`,
-        );
-
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "No se pudieron consultar las capas de riesgo.");
-        }
+        const matches = await fetchRiskMatches(latitude, longitude);
 
         if (!cancelled) {
-          setGeoLayer({
-            loading: false,
-            error: null,
-            matches: { rio: payload.rio?.matches ?? [], lluvia: payload.lluvia?.matches ?? [] },
-          });
+          setGeoLayer({ loading: false, error: null, matches });
         }
       } catch (error) {
         if (!cancelled) {
@@ -412,9 +476,8 @@ export default function Home() {
     };
   }, [location]);
 
-  // El mapa se crea una sola vez (cuando llega la primera posición); las posiciones más
-  // precisas que llegan después solo mueven el marcador, en el efecto siguiente.
-  const hasLocation = location !== null;
+  // El mapa se crea al abrir la pestaña, aunque todavía no haya ubicación (se puede buscar una
+  // dirección o tocar el mapa); las posiciones que llegan después solo mueven el marcador.
   const locationRef = useRef(location);
 
   useEffect(() => {
@@ -432,7 +495,7 @@ export default function Home() {
       return;
     }
 
-    if (!location || !mapContainerRef.current) {
+    if (!mapContainerRef.current) {
       return;
     }
 
@@ -448,10 +511,16 @@ export default function Home() {
         removeMap(mapInstanceRef.current);
       }
 
+      const selectedPoint = selectedPointRef.current;
+      const center: [number, number] = selectedPoint
+        ? [selectedPoint.latitude, selectedPoint.longitude]
+        : location
+          ? [location.latitude, location.longitude]
+          : AMGR_CENTER;
       const map = L.map(mapContainerRef.current, {
         zoomControl: true,
         scrollWheelZoom: true,
-      }).setView([location.latitude, location.longitude], 16);
+      }).setView(center, 16);
 
       // Se crean los dos mapas base y se muestra el elegido; el otro se agrega al cambiar la opción.
       baseLayersRef.current = {
@@ -472,26 +541,30 @@ export default function Home() {
 
       // Un pane por capa fija el orden de dibujo aunque se oculten y vuelvan a mostrar:
       // el relleno del río abajo y el de precipitaciones sobre él (así se ven las dos),
-      // luego defensas y estaciones de bombeo, y el marcador del usuario arriba de todo.
+      // luego defensas y estaciones de bombeo, y los marcadores del usuario y del punto
+      // consultado arriba de todo.
       map.createPane("riskPane").style.zIndex = "415";
       map.createPane("rainPane").style.zIndex = "420";
       map.createPane("defensaPane").style.zIndex = "430";
       map.createPane("bombeoPane").style.zIndex = "440";
       map.createPane("userPane").style.zIndex = "650";
+      map.createPane("pointPane").style.zIndex = "660";
 
-      const userMarker = L.circleMarker([location.latitude, location.longitude], {
-        pane: "userPane",
-        // Negro con borde blanco: se distingue sobre el relleno azul del río y el cálido
-        // de precipitaciones.
-        radius: 9,
-        color: "#ffffff",
-        fillColor: "#111827",
-        fillOpacity: 1,
-        weight: 3,
+      if (location) {
+        userMarkerRef.current = createUserMarker(L, map, location);
+      }
+      if (selectedPoint) {
+        pointMarkerRef.current = createPointMarker(L, map, selectedPoint);
+      }
+
+      // Tocar el mapa consulta el riesgo de ese punto.
+      map.on("click", (event: { latlng: { lat: number; lng: number } }) => {
+        setSelectedPoint({
+          latitude: event.latlng.lat,
+          longitude: event.latlng.lng,
+          label: "Punto señalado en el mapa",
+        });
       });
-      userMarker.addTo(map);
-      userMarker.bindPopup("Tu ubicación actual");
-      userMarkerRef.current = userMarker;
 
       fetch("/api/geo/capa")
         .then((response) => response.json())
@@ -515,7 +588,8 @@ export default function Home() {
             layer.addTo(map);
           }
 
-          if (layer.getBounds && layer.getBounds().isValid()) {
+          // Si hay un punto consultado, la vista queda sobre él.
+          if (!selectedPointRef.current && layer.getBounds && layer.getBounds().isValid()) {
             // Sin animación: si el usuario cambia de pestaña durante el zoom animado, Leaflet falla
             // al terminar la transición sobre un mapa ya eliminado.
             map.fitBounds(layer.getBounds().pad(0.2), { animate: false });
@@ -648,6 +722,7 @@ export default function Home() {
     return () => {
       cancelled = true;
       userMarkerRef.current = null;
+      pointMarkerRef.current = null;
       riskLayerRef.current = null;
       rainLayerRef.current = null;
       defensaLayerRef.current = null;
@@ -658,7 +733,7 @@ export default function Home() {
         mapInstanceRef.current = null;
       }
     };
-  }, [activeTab, hasLocation]);
+  }, [activeTab]);
 
   // Mostrar u ocultar capas sin volver a crear el mapa.
   useEffect(() => {
@@ -698,10 +773,105 @@ export default function Home() {
   }, [baseMap]);
 
   useEffect(() => {
-    if (location && userMarkerRef.current) {
+    if (!location) return;
+
+    if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([location.latitude, location.longitude]);
+    } else if (mapInstanceRef.current && window.L) {
+      // El mapa se abrió antes de tener la ubicación del usuario.
+      userMarkerRef.current = createUserMarker(window.L, mapInstanceRef.current, location);
     }
   }, [location]);
+
+  // Marcador del punto consultado y riesgo de ese punto según los dos mapas.
+  useEffect(() => {
+    selectedPointRef.current = selectedPoint;
+
+    const map = mapInstanceRef.current;
+    if (map && window.L) {
+      pointMarkerRef.current?.remove();
+      pointMarkerRef.current = selectedPoint ? createPointMarker(window.L, map, selectedPoint) : null;
+      if (selectedPoint?.centerMap) {
+        map.setView([selectedPoint.latitude, selectedPoint.longitude], 17, { animate: false });
+      }
+    }
+
+    if (!selectedPoint) return;
+
+    const { latitude, longitude } = selectedPoint;
+    let cancelled = false;
+
+    async function loadPointRisk() {
+      try {
+        setPointRisk({ loading: true, error: null, matches: { rio: [], lluvia: [] } });
+        const matches = await fetchRiskMatches(latitude, longitude);
+        if (!cancelled) {
+          setPointRisk({ loading: false, error: null, matches });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPointRisk({
+            loading: false,
+            error: error instanceof Error ? error.message : "No se pudo verificar el riesgo del punto.",
+            matches: { rio: [], lluvia: [] },
+          });
+        }
+      }
+    }
+
+    loadPointRisk();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPoint]);
+
+  const searchAddress = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAddressSearch({ loading: true, error: null });
+
+    try {
+      const params = new URLSearchParams({
+        localidad: addressLocalidad,
+        calle: addressStreet.trim(),
+        altura: addressNumber.trim(),
+      });
+      const response = await fetch(`/api/geo/direccion?${params}`);
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "No se encontró la dirección.");
+      }
+
+      setSelectedPoint({
+        latitude: payload.latitude,
+        longitude: payload.longitude,
+        label: payload.label,
+        exact: payload.exact,
+        centerMap: true,
+      });
+      setAddressSearch({ loading: false, error: null });
+    } catch (error) {
+      setAddressSearch({
+        loading: false,
+        error: error instanceof Error ? error.message : "No se pudo buscar la dirección.",
+      });
+    }
+  };
+
+  // Vuelve a mostrar el riesgo de la ubicación del usuario.
+  const clearSelectedPoint = () => {
+    setSelectedPoint(null);
+    setAddressSearch({ loading: false, error: null });
+    if (location && mapInstanceRef.current) {
+      mapInstanceRef.current.setView([location.latitude, location.longitude], 16, { animate: false });
+    }
+  };
+
+  // Lo que muestra la pestaña Mapa: el punto consultado o, si no hay, la ubicación del usuario.
+  const mapRisk = selectedPoint ? pointRisk : geoLayer;
+  const mapRiskHasPoint = selectedPoint !== null || location !== null;
+  const mapRiskHasMatch = mapRisk.matches.rio.length > 0 || mapRisk.matches.lluvia.length > 0;
 
   return (
     <div className={styles.page}>
@@ -773,7 +943,8 @@ export default function Home() {
                 </div>
               ) : null}
 
-              {activeTab === "mapa" && location ? (
+
+              {activeTab === "mapa" ? (
                 <>
                   <fieldset className={styles.layerToggles}>
                     <legend>Mapa base</legend>
@@ -875,27 +1046,99 @@ export default function Home() {
                         : null}
                     </div>
                   ) : null}
+                  <form className={styles.addressForm} onSubmit={searchAddress}>
+                    <h3 className={styles.addressTitle}>Consultá un punto en particular</h3>
+                    <label>
+                      Localidad
+                      <select value={addressLocalidad} onChange={(event) => setAddressLocalidad(event.target.value)}>
+                        {LOCALIDADES.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Calle
+                      <input
+                        type="text"
+                        value={addressStreet}
+                        onChange={(event) => setAddressStreet(event.target.value)}
+                        placeholder="Ej.: Av. 9 de Julio"
+                        autoComplete="address-line1"
+                        required
+                        minLength={2}
+                        maxLength={80}
+                      />
+                    </label>
+                    <label>
+                      Altura
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={addressNumber}
+                        onChange={(event) => setAddressNumber(event.target.value.replace(/\D/g, ""))}
+                        placeholder="Ej.: 500"
+                        maxLength={5}
+                      />
+                    </label>
+                    <button type="submit" className={styles.addressButton} disabled={addressSearch.loading}>
+                      {addressSearch.loading ? "Buscando..." : "Buscar"}
+                    </button>
+                    <p className={styles.addressHint}>O tocá el mapa para señalar un punto.</p>
+                  </form>
+                  {addressSearch.error ? <p className={styles.error}>{addressSearch.error}</p> : null}
                 </>
               ) : null}
 
-              {geoLayer.loading ? <p className={styles.status}>Verificando las capas de riesgo...</p> : null}
-              {geoLayer.error ? <p className={styles.error}>{geoLayer.error}</p> : null}
+              {mapRiskHasPoint ? (
+                <div className={styles.pointBar}>
+                  <div>
+                    <span>{selectedPoint ? "Riesgo del punto consultado" : "Riesgo de tu ubicación actual"}</span>
+                    <strong>{selectedPoint ? selectedPoint.label : "Tu ubicación (GPS)"}</strong>
+                  </div>
+                  {selectedPoint && location ? (
+                    <button type="button" className={styles.pointBarButton} onClick={clearSelectedPoint}>
+                      Volver a mi ubicación
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className={styles.geoNeutral}>
+                  Buscá una dirección o tocá el mapa para conocer el riesgo hídrico de un punto.
+                </p>
+              )}
 
-              {!geoLayer.loading && !geoLayer.error && location ? (
-                hasAnyRiskMatch ? (
+              {selectedPoint?.exact === false ? (
+                <p className={styles.status}>
+                  La altura no figura en el mapa: se marcó un punto de la calle. Si no es el lugar, tocá el mapa
+                  para ajustarlo.
+                </p>
+              ) : null}
+
+              {mapRisk.loading ? <p className={styles.status}>Verificando las capas de riesgo...</p> : null}
+              {mapRisk.error ? <p className={styles.error}>{mapRisk.error}</p> : null}
+
+              {!mapRisk.loading && !mapRisk.error && mapRiskHasPoint ? (
+                mapRiskHasMatch ? (
                   <div className={styles.geoInfo}>
                     {RISK_MAPS.map(({ key, title }) => {
-                      const match = geoLayer.matches[key][0];
+                      const match = mapRisk.matches[key][0];
                       const category = typeof match?.properties?.categoria === "string"
                         ? match.properties.categoria
                         : null;
                       const area = match?.properties?.area_ha ?? "-";
+                      const color = levelColor(key === "rio" ? RIVER_LEVELS : RAIN_LEVELS, category ?? undefined);
 
                       return (
                         <div key={key} className={styles.geoMatch}>
                           <div className={styles.geoMatchHeader}>
                             <span>{title}</span>
-                            <strong>{category ?? "Fuera de zona de riesgo"}</strong>
+                            <strong>
+                              {category ? <i className={styles.geoMatchSwatch} style={{ background: color }} /> : null}
+                              {category ?? "Fuera de zona de riesgo"}
+                            </strong>
                           </div>
                           {category ? (
                             <div className={styles.geoMatchMeta}>
@@ -907,7 +1150,9 @@ export default function Home() {
                     })}
                   </div>
                 ) : (
-                  <p className={styles.geoNeutral}>Tu ubicación no coincide con ninguna zona de riesgo hídrico.</p>
+                  <p className={styles.geoNeutral}>
+                    {selectedPoint ? "Este punto" : "Tu ubicación"} no coincide con ninguna zona de riesgo hídrico.
+                  </p>
                 )
               ) : null}
             </>
