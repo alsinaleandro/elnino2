@@ -52,6 +52,12 @@ const ICONS: Record<string, ReactNode> = {
   ayuda: (
     <path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2" />
   ),
+  contacto: (
+    <>
+      <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4v-4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+      <path d="M8 10h8M8 13.5h5" />
+    </>
+  ),
   mas: (
     <>
       <circle cx="5" cy="12" r="1.2" />

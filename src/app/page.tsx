@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
+import ContactView from "./ContactView";
 import HelpView from "./HelpView";
 import InfoGuide from "./InfoGuide";
 import { loadLeaflet, removeMap } from "./leaflet";
@@ -40,6 +41,7 @@ const TABS = [
   { key: "pronosticos", label: "Pronósticos" },
   { key: "nubes", label: "Nubes" },
   { key: "ayuda", label: "Ayuda" },
+  { key: "contacto", label: "Contactanos" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -53,6 +55,15 @@ const BOMBEO_COLORS: Record<string, string> = {
   Alcantarilla: "#a855f7",
 };
 const DEFENSA_COLOR = "#7c2d12";
+
+// La visita se registra una sola vez por carga de la página: en desarrollo React monta los
+// componentes dos veces y sin esto se contaría doble.
+let visitRegistered = false;
+const registerVisit = () => {
+  if (visitRegistered) return;
+  visitRegistered = true;
+  fetch("/api/visitas", { method: "POST" }).catch(() => {});
+};
 
 const escapeHtml = (value: unknown) =>
   String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
@@ -215,6 +226,10 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("inicio");
   const nextTab = TABS[TABS.findIndex((tab) => tab.key === activeTab) + 1];
   const tabsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    registerVisit();
+  }, []);
 
   // El botón Siguiente queda al final del contenido: al cambiar de pestaña se vuelve arriba.
   const goToTab = (key: TabKey) => {
@@ -989,6 +1004,8 @@ export default function Home() {
             </div>
           ) : activeTab === "ayuda" ? (
             <HelpView />
+          ) : activeTab === "contacto" ? (
+            <ContactView location={location} />
           ) : activeTab === "info" ? (
             <InfoGuide />
           ) : activeTab === "nubes" ? (
