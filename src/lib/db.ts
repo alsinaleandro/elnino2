@@ -66,6 +66,18 @@ function migrate(db: DatabaseSync) {
       user_agent TEXT,
       emailed    INTEGER NOT NULL DEFAULT 0
     );
+
+    -- Una fila por visita en la que el visitante compartió su ubicación GPS. Se muestran como
+    -- puntos en /estadisticas.
+    CREATE TABLE IF NOT EXISTS visit_locations (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL,
+      latitude   REAL NOT NULL,
+      longitude  REAL NOT NULL,
+      accuracy   REAL,
+      ip         TEXT
+    );
+    CREATE INDEX IF NOT EXISTS visit_locations_ip ON visit_locations (ip, created_at);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");

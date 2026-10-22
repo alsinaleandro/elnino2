@@ -65,6 +65,19 @@ const registerVisit = () => {
   fetch("/api/visitas", { method: "POST" }).catch(() => {});
 };
 
+// La ubicación de la visita también se guarda una sola vez: la primera posición que se consigue
+// (después el GPS la va refinando, pero eso no cuenta como otra visita).
+let visitLocationRegistered = false;
+const registerVisitLocation = (location: { latitude: number; longitude: number; accuracy: number | null }) => {
+  if (visitLocationRegistered) return;
+  visitLocationRegistered = true;
+  fetch("/api/visitas/ubicacion", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(location),
+  }).catch(() => {});
+};
+
 const escapeHtml = (value: unknown) =>
   String(value).replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
@@ -253,6 +266,10 @@ export default function Home() {
   } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
+
+  useEffect(() => {
+    if (location) registerVisitLocation(location);
+  }, [location]);
   // Zonas de cada mapa de riesgo (río y precipitaciones) que contienen la ubicación del usuario.
   const [geoLayer, setGeoLayer] = useState<RiskLookup>({
     loading: false,
