@@ -18,13 +18,10 @@ export async function GET() {
 }
 
 // POST: publica un mensaje. Body: { topic, firstName, lastName, whatsapp, email, message,
-// location?, captchaId, captchaAnswer, hp_x7 } ("hp_x7" es un campo trampa oculto).
+// location?, captchaId, captchaAnswer }.
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return fail("Pedido inválido.");
-
-  // Solo un bot completa el campo oculto: se le responde como si nada para no darle pistas.
-  if (body.hp_x7) return NextResponse.json({ ok: true });
 
   let input;
   try {

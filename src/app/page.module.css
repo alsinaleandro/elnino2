@@ -1835,15 +1835,6 @@
   color: #1d4ed8;
 }
 
-/* Fuera de la pantalla en lugar de display:none: algunos bots saltean los campos ocultos. */
-.contactTrap {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-}
-
 .contactCaptcha {
   display: flex;
   flex-direction: column;

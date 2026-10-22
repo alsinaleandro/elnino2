@@ -148,11 +148,6 @@ function ContactForm({
         <input name="email" type="email" required maxLength={120} autoComplete="email" />
       </label>
 
-      {/* Campo trampa: invisible para las personas; los bots lo completan y el mensaje se descarta.
-          El nombre no significa nada a propósito: con uno como "website" el autocompletado del celular
-          puede llenarlo y el mensaje se descartaría sin aviso. */}
-      <input name="hp_x7" className={styles.contactTrap} tabIndex={-1} autoComplete="off" aria-hidden="true" />
-
       <div className={`${styles.contactCaptcha} ${styles.contactWide}`}>
         <span className={styles.contactCaptchaLabel}>Para comprobar que no sos un robot, resolvé la suma</span>
         <div className={styles.contactCaptchaRow}>
@@ -171,6 +166,7 @@ function ContactForm({
             name="captchaAnswer"
             inputMode="numeric"
             pattern="[0-9]*"
+            autoComplete="off"
             required
             maxLength={3}
             aria-label="Resultado de la suma"
