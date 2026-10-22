@@ -286,6 +286,29 @@
   height: auto;
 }
 
+/* En el celular la portada se compacta para que el logo entre sin hacer scroll. */
+@media (max-width: 767px) {
+  .page {
+    padding-top: 10px;
+  }
+
+  .cover {
+    gap: 10px;
+    padding: 4px 4px 0;
+  }
+
+  .coverButton {
+    margin-top: 2px;
+    min-height: 48px;
+    padding: 12px 28px;
+  }
+
+  .coverCredits {
+    margin-top: 0;
+    gap: 2px;
+  }
+}
+
 /* Significado de cada nivel, debajo de las barras de la pestaña Riesgo. */
 .riskGuide {
   display: flex;
