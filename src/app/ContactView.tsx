@@ -4,8 +4,8 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import styles from "./page.module.css";
 
 // Pestaña Contactanos: un formulario para dejar un mensaje público (se muestra abajo, en la misma
-// pestaña) o uno privado (llega por e-mail al equipo), los dos con captcha. Los mensajes públicos
-// llevan la ubicación GPS que la app ya obtuvo, si el visitante la compartió.
+// pestaña) o uno privado (llega por e-mail al equipo), los dos con captcha. Los dos llevan la
+// ubicación GPS que la app ya obtuvo, si el visitante la compartió.
 
 type Location = { latitude: number; longitude: number; accuracy: number | null };
 type Kind = "publico" | "privado";
@@ -73,7 +73,8 @@ function ContactForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          ...(isPublic ? { topic, location } : {}),
+          ...(isPublic ? { topic } : {}),
+          location,
           captchaId: captcha?.id,
         }),
       });
@@ -129,21 +130,19 @@ function ContactForm({
         Apellido
         <input name="lastName" required minLength={2} maxLength={40} autoComplete="family-name" />
       </label>
-      {isPublic ? (
-        <label>
-          WhatsApp
-          <input
-            name="whatsapp"
-            type="tel"
-            inputMode="tel"
-            required
-            pattern="\+?[0-9 \(\)\-]{8,20}"
-            placeholder="362 4123456"
-            autoComplete="tel"
-          />
-        </label>
-      ) : null}
-      <label className={isPublic ? undefined : styles.contactWide}>
+      <label>
+        WhatsApp
+        <input
+          name="whatsapp"
+          type="tel"
+          inputMode="tel"
+          required
+          pattern="\+?[0-9 \(\)\-]{8,20}"
+          placeholder="362 4123456"
+          autoComplete="tel"
+        />
+      </label>
+      <label>
         E-mail
         <input name="email" type="email" required maxLength={120} autoComplete="email" />
       </label>
@@ -183,7 +182,9 @@ function ContactForm({
           ? `Se publica tu nombre y la inicial del apellido. Tu WhatsApp, e-mail${
               location ? " y la ubicación GPS de tu celular" : ""
             } se guardan para poder contactarte y ubicar el problema, pero no se muestran.`
-          : "El mensaje llega por e-mail al equipo de la app y no se publica."}
+          : `El mensaje llega por e-mail al equipo de la app junto con tu WhatsApp${
+              location ? " y la ubicación GPS de tu celular" : ""
+            }, y no se publica.`}
       </p>
 
       {status.error ? <p className={`${styles.error} ${styles.contactWide}`}>{status.error}</p> : null}

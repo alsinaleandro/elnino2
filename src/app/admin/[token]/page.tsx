@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { countMessages, isAdminToken, listAdminMessages, type Filter } from "@/lib/admin";
+import { mapLink, whatsappLink } from "@/lib/links";
 import { moderateMessage } from "./actions";
 import ConfirmButton from "./ConfirmButton";
 import styles from "./admin.module.css";
@@ -31,16 +32,6 @@ const formatDate = (iso: string) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-
-// wa.me pide el número internacional: 54 + 9 + característica + número, sin 0 ni 15.
-function whatsappLink(number: string) {
-  const digits = number.replace(/\D/g, "");
-  if (digits.startsWith("549")) return `https://wa.me/${digits}`;
-  if (digits.startsWith("54")) return `https://wa.me/549${digits.slice(2)}`;
-  if (digits.length === 11 && digits.startsWith("0")) return `https://wa.me/549${digits.slice(1)}`;
-  if (digits.length === 10) return `https://wa.me/549${digits}`;
-  return null;
-}
 
 export default async function AdminPage({ params, searchParams }: PageProps<"/admin/[token]">) {
   await connection();
@@ -122,7 +113,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
                 <dd>
                   {item.latitude !== null && item.longitude !== null ? (
                     <a
-                      href={`https://www.openstreetmap.org/?mlat=${item.latitude}&mlon=${item.longitude}#map=17/${item.latitude}/${item.longitude}`}
+                      href={mapLink(item.latitude, item.longitude)}
                       target="_blank"
                       rel="noopener noreferrer"
                     >

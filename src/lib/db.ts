@@ -69,6 +69,11 @@ function migrate(db: DatabaseSync) {
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
+  // Los mensajes privados anteriores a estas columnas quedan con NULL.
+  addColumn(db, "private_messages", "whatsapp", "TEXT");
+  addColumn(db, "private_messages", "latitude", "REAL");
+  addColumn(db, "private_messages", "longitude", "REAL");
+  addColumn(db, "private_messages", "accuracy", "REAL");
 }
 
 function addColumn(db: DatabaseSync, table: string, column: string, definition: string) {

@@ -105,8 +105,10 @@ export function parsePrivateMessage(body: Record<string, unknown>) {
   return {
     firstName: requireName(body.firstName, "nombre"),
     lastName: requireName(body.lastName, "apellido"),
+    whatsapp: requireWhatsapp(body.whatsapp),
     email: requireEmail(body.email),
     message: requireMessage(body.message, 2000),
+    location: optionalLocation(body.location),
   };
 }
 
@@ -136,15 +138,20 @@ export function savePublicMessage(input: ReturnType<typeof parsePublicMessage>, 
 export function savePrivateMessage(input: ReturnType<typeof parsePrivateMessage>, requester: Requester) {
   const result = db
     .prepare(
-      `INSERT INTO private_messages (created_at, first_name, last_name, email, message, ip, user_agent)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO private_messages
+         (created_at, first_name, last_name, whatsapp, email, message, latitude, longitude, accuracy, ip, user_agent)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       new Date().toISOString(),
       input.firstName,
       input.lastName,
+      input.whatsapp,
       input.email,
       input.message,
+      input.location?.latitude ?? null,
+      input.location?.longitude ?? null,
+      input.location?.accuracy ?? null,
       requester.ip,
       requester.userAgent,
     );
