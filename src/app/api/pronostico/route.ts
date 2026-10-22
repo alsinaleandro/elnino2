@@ -82,6 +82,11 @@ const MONTHS: Record<string, string> = {
   JUL: "07", AGO: "08", SEP: "09", OCT: "10", NOV: "11", DIC: "12",
 };
 
+// El archivo del SMN a veces trae valores corruptos en la columna de lluvia (p. ej. 850.0 o
+// 2261630.0 en la misma franja para todas las estaciones). Ningún modelo pronostica más de esto en
+// 3 h, así que esas franjas se descartan.
+const SMN_MAX_MM_PER_3H = 200;
+
 // El bloque de cada estación tiene filas como: "  29/SEP/2026 15Hs.   18.1   170 |   9   1.1"
 // (fecha y hora local, temperatura, viento dir|km/h, lluvia en mm de las 3 h).
 function parseSmnStation(text: string, station: string): SmnDay[] {
@@ -91,17 +96,25 @@ function parseSmnStation(text: string, station: string): SmnDay[] {
   }
 
   const totals = new Map<string, number>();
-  const rowPattern = /^\s*(\d{2})\/([A-Z]{3})\/(\d{4})\s+\d{2}Hs\.\s+-?[\d.]+\s+\d+\s*\|\s*\d+\s+([\d.]+)\s*$/;
+  const rowPattern = /^\s*(\d{2})\/([A-Z]{3})\/(\d{4})\s+(\d{2})Hs\.\s+-?[\d.]+\s+\d+\s*\|\s*\d+\s+([\d.]+)\s*$/;
   let seenRows = false;
 
   for (const line of text.slice(start).split(/\r?\n/).slice(1)) {
     const match = line.match(rowPattern);
 
     if (match) {
-      const [, day, month, year, mm] = match;
+      const [, day, month, year, hour, mm] = match;
       const date = `${year}-${MONTHS[month] ?? "00"}-${day}`;
-      totals.set(date, (totals.get(date) ?? 0) + Number(mm));
+      const value = Number(mm);
       seenRows = true;
+
+      if (!Number.isFinite(value) || value > SMN_MAX_MM_PER_3H) {
+        console.warn(`[pronostico] SMN: valor descartado ${mm} mm en ${station} ${date} ${hour}h`);
+        totals.set(date, totals.get(date) ?? 0);
+        continue;
+      }
+
+      totals.set(date, (totals.get(date) ?? 0) + value);
     } else if (seenRows && line.includes("=====")) {
       break;
     }
