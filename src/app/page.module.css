@@ -259,11 +259,12 @@
   }
 }
 
-/* "Creado por" y el logo de PTP Chaco, al pie de la portada. */
+/* "Creado por" y el logo de PTP Chaco, al pie de la portada, alineados a la derecha. */
 .coverCredits {
+  align-self: flex-end;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 6px;
   margin-top: 12px;
   font-size: 0.8rem;

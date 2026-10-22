@@ -1014,18 +1014,18 @@ export default function Home() {
               <p className={styles.coverNote}>
                 Los datos utilizados se corresponden con la información oficial disponible.
               </p>
-              <div className={styles.coverCredits}>
-                <span>Creado por</span>
-                <a href="https://ptpchaco.org.ar" target="_blank" rel="noreferrer">
-                  <Image src={ptpLogo} alt="PTP Chaco" width={188} />
-                </a>
-              </div>
               {nextTab ? (
                 <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
                   Siguiente
                   <span aria-hidden="true">→</span>
                 </button>
               ) : null}
+              <div className={styles.coverCredits}>
+                <span>Creado por</span>
+                <a href="https://ptpchaco.org.ar" target="_blank" rel="noreferrer">
+                  <Image src={ptpLogo} alt="PTP Chaco" width={132} />
+                </a>
+              </div>
             </div>
           ) : activeTab === "ayuda" ? (
             <HelpView />
