@@ -137,7 +137,7 @@ function ContactForm({
             type="tel"
             inputMode="tel"
             required
-            pattern="[+]?[0-9 ()\-]{8,20}"
+            pattern="\+?[0-9 \(\)\-]{8,20}"
             placeholder="362 4123456"
             autoComplete="tel"
           />
@@ -148,8 +148,10 @@ function ContactForm({
         <input name="email" type="email" required maxLength={120} autoComplete="email" />
       </label>
 
-      {/* Campo trampa: invisible para las personas; los bots lo completan y el mensaje se descarta. */}
-      <input name="website" className={styles.contactTrap} tabIndex={-1} autoComplete="off" aria-hidden="true" />
+      {/* Campo trampa: invisible para las personas; los bots lo completan y el mensaje se descarta.
+          El nombre no significa nada a propósito: con uno como "website" el autocompletado del celular
+          puede llenarlo y el mensaje se descartaría sin aviso. */}
+      <input name="hp_x7" className={styles.contactTrap} tabIndex={-1} autoComplete="off" aria-hidden="true" />
 
       <div className={`${styles.contactCaptcha} ${styles.contactWide}`}>
         <span className={styles.contactCaptchaLabel}>Para comprobar que no sos un robot, resolvé la suma</span>

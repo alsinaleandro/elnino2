@@ -13,12 +13,12 @@ import { sendPrivateMessage } from "@/lib/mailer";
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
-// POST: body { firstName, lastName, email, message, captchaId, captchaAnswer, website }.
+// POST: body { firstName, lastName, email, message, captchaId, captchaAnswer, hp_x7 }.
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return fail("Pedido inválido.");
 
-  if (body.website) return NextResponse.json({ ok: true });
+  if (body.hp_x7) return NextResponse.json({ ok: true });
 
   let input;
   try {
