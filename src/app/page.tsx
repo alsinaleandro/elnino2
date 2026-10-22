@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import ptpLogo from "../../public/images/logo-ptp-chaco.png";
 import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
 import ContactView from "./ContactView";
@@ -1018,6 +1020,12 @@ export default function Home() {
                   <span aria-hidden="true">→</span>
                 </button>
               ) : null}
+              <div className={styles.coverCredits}>
+                <span>Creado por</span>
+                <a href="https://ptpchaco.org.ar" target="_blank" rel="noreferrer">
+                  <Image src={ptpLogo} alt="PTP Chaco" width={188} />
+                </a>
+              </div>
             </div>
           ) : activeTab === "ayuda" ? (
             <HelpView />

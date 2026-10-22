@@ -259,6 +259,32 @@
   }
 }
 
+/* "Creado por" y el logo de PTP Chaco, al pie de la portada. */
+.coverCredits {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.coverCredits a {
+  display: block;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.coverCredits a:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+.coverCredits img {
+  height: auto;
+}
+
 /* Significado de cada nivel, debajo de las barras de la pestaña Riesgo. */
 .riskGuide {
   display: flex;
