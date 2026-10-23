@@ -2,9 +2,18 @@ import { db } from "./db";
 
 const VISITS = "visits";
 
-// Suma una visita y devuelve el total; el upsert es una sola sentencia, así no se pierden visitas
-// simultáneas.
+// Fecha de hoy en Argentina (AAAA-MM-DD): el día de la visita según el reloj local, no UTC.
+const today = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Cordoba" }).format(new Date());
+
+// Suma una visita al total y al día, y devuelve el total; cada upsert es una sola sentencia, así no
+// se pierden visitas simultáneas.
 export function registerVisit() {
+  db.prepare(
+    `INSERT INTO daily_visits (date, visits) VALUES (?, 1)
+     ON CONFLICT(date) DO UPDATE SET visits = visits + 1`,
+  ).run(today());
+
   const row = db
     .prepare(
       `INSERT INTO counters (name, value) VALUES (?, 1)
@@ -20,6 +29,14 @@ export function getVisits() {
     | { value: number }
     | undefined;
   return row?.value ?? 0;
+}
+
+export type DailyVisits = { date: string; visits: number };
+
+// Visitas de cada día, del más reciente al más antiguo.
+export function getDailyVisits(): DailyVisits[] {
+  const rows = db.prepare("SELECT date, visits FROM daily_visits ORDER BY date DESC").all() as DailyVisits[];
+  return rows.map((row) => ({ ...row }));
 }
 
 // Máximo de ubicaciones por IP en una hora: alcanza para varias personas detrás de la misma IP
@@ -48,14 +65,16 @@ export function registerVisitLocation(
   return true;
 }
 
+// Ubicaciones de las visitas de las últimas `hours` horas.
 // node:sqlite devuelve filas sin prototipo, que React no deja pasar a un componente cliente: se
 // copian a objetos comunes.
-export function getVisitLocations(): VisitLocation[] {
+export function getVisitLocations(hours: number): VisitLocation[] {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
   const rows = db
     .prepare(
       `SELECT latitude, longitude, accuracy, created_at AS createdAt
-       FROM visit_locations ORDER BY created_at`,
+       FROM visit_locations WHERE created_at > ? ORDER BY created_at`,
     )
-    .all() as VisitLocation[];
+    .all(since) as VisitLocation[];
   return rows.map((row) => ({ ...row }));
 }

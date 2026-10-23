@@ -78,6 +78,14 @@ function migrate(db: DatabaseSync) {
       ip         TEXT
     );
     CREATE INDEX IF NOT EXISTS visit_locations_ip ON visit_locations (ip, created_at);
+    CREATE INDEX IF NOT EXISTS visit_locations_created ON visit_locations (created_at);
+
+    -- Visitas por día (fecha de Argentina, AAAA-MM-DD). Se cuenta desde que existe la tabla: el
+    -- total histórico sigue en counters.
+    CREATE TABLE IF NOT EXISTS daily_visits (
+      date   TEXT PRIMARY KEY,
+      visits INTEGER NOT NULL DEFAULT 0
+    );
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
