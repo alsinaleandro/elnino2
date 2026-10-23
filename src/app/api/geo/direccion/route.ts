@@ -6,13 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const USER_AGENT = "elnino2/1.0 (https://elnino.ptpchaco.org.ar)";
-// Rectángulo que cubre Resistencia, Barranqueras, Fontana y Puerto Vilelas (oeste, norte, este, sur).
-const AMGR_VIEWBOX = "-59.12,-27.34,-58.84,-27.56";
+// Rectángulo que cubre Resistencia, Barranqueras, Fontana, Puerto Vilelas y Colonia Benítez
+// (oeste, norte, este, sur).
+const AMGR_VIEWBOX = "-59.12,-27.26,-58.84,-27.56";
 const MIN_INTERVAL_MS = 1100;
 const CACHE_MAX_ENTRIES = 500;
 
 // Las mismas que ofrece el buscador de la pestaña Mapa.
-const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas"];
+const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas", "Colonia Benítez"];
 
 type NominatimResult = {
   lat: string;
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
 
   if (!localidad || calle.length < 2 || calle.length > 80 || !/^\d{0,5}$/.test(altura)) {
     return NextResponse.json(
-      { success: false, error: "Indicá una localidad del AMGR, el nombre de la calle y la altura (solo números)." },
+      { success: false, error: "Indicá una de las localidades de la lista, el nombre de la calle y la altura (solo números)." },
       { status: 400 },
     );
   }

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
 import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
@@ -123,10 +124,14 @@ const rainZoneStyle = (feature?: ZoneFeature) => {
 const GOOD_ACCURACY_METERS = 25;
 const GPS_WATCH_MAX_MS = 45000;
 
-// Zonas de cada mapa de riesgo que contienen un punto (respuesta de /api/geo/contains).
-type RiskLookup = { loading: boolean; error: string | null; matches: Record<RiskMapKey, RiskMatch[]> };
+// Zonas de cada mapa de riesgo que contienen un punto y localidad del punto (respuesta de
+// /api/geo/contains). `localidad` es null fuera de las localidades con mapa.
+type RiskResult = { matches: Record<RiskMapKey, RiskMatch[]>; localidad: LocalityId | null };
+type RiskLookup = RiskResult & { loading: boolean; error: string | null };
 
-async function fetchRiskMatches(latitude: number, longitude: number): Promise<Record<RiskMapKey, RiskMatch[]>> {
+const NO_RISK: RiskResult = { matches: { rio: [], lluvia: [] }, localidad: null };
+
+async function fetchRiskMatches(latitude: number, longitude: number): Promise<RiskResult> {
   const response = await fetch(`/api/geo/contains?lng=${longitude}&lat=${latitude}`);
   const payload = await response.json();
 
@@ -134,15 +139,23 @@ async function fetchRiskMatches(latitude: number, longitude: number): Promise<Re
     throw new Error(payload?.error || "No se pudieron consultar las capas de riesgo.");
   }
 
-  return { rio: payload.rio?.matches ?? [], lluvia: payload.lluvia?.matches ?? [] };
+  return {
+    matches: { rio: payload.rio?.matches ?? [], lluvia: payload.lluvia?.matches ?? [] },
+    localidad: payload.localidad && payload.localidad in LOCALITIES ? payload.localidad : null,
+  };
 }
+
+// Encuadre de la localidad en el mapa, con un pequeño margen.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fitLocality = (L: any, map: any, id: LocalityId) =>
+  map.fitBounds(L.latLngBounds(LOCALITIES[id].bounds).pad(0.05), { animate: false });
 
 // Punto que el usuario consulta en la pestaña Mapa (dirección buscada o lugar tocado en el mapa).
 // `exact` es false cuando la altura no figura en OpenStreetMap y se marcó un punto de la calle;
 // `centerMap` lleva el mapa hasta el punto (al buscar una dirección, no al tocar el mapa).
 type MapPoint = { latitude: number; longitude: number; label: string; exact?: boolean; centerMap?: boolean };
 
-const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas"] as const;
+const LOCALIDADES = ["Resistencia", "Barranqueras", "Fontana", "Puerto Vilelas", "Colonia Benítez"] as const;
 
 // Un toque con el dedo sobre el mapa: hasta este movimiento y esta duración no es un arrastre.
 const TAP_TOLERANCE_PX = 12;
@@ -273,21 +286,15 @@ export default function Home() {
     if (location) registerVisitLocation(location);
   }, [location]);
   // Zonas de cada mapa de riesgo (río y precipitaciones) que contienen la ubicación del usuario.
-  const [geoLayer, setGeoLayer] = useState<RiskLookup>({
-    loading: false,
-    error: null,
-    matches: { rio: [], lluvia: [] },
-  });
+  const [geoLayer, setGeoLayer] = useState<RiskLookup>({ loading: false, error: null, ...NO_RISK });
+  // Localidad del usuario, para encuadrar el mapa cuando se conoce después de abrirlo.
+  const userLocalityRef = useRef<LocalityId | null>(null);
   // Punto consultado en la pestaña Mapa; mientras sea null se muestra el riesgo de la ubicación
   // del usuario. La pestaña Riesgo siempre usa la ubicación del usuario.
   const [selectedPoint, setSelectedPoint] = useState<MapPoint | null>(null);
   const selectedPointRef = useRef<MapPoint | null>(null);
   const pointMarkerRef = useRef<LeafletLayer | null>(null);
-  const [pointRisk, setPointRisk] = useState<RiskLookup>({
-    loading: false,
-    error: null,
-    matches: { rio: [], lluvia: [] },
-  });
+  const [pointRisk, setPointRisk] = useState<RiskLookup>({ loading: false, error: null, ...NO_RISK });
   const [addressLocalidad, setAddressLocalidad] = useState<string>(LOCALIDADES[0]);
   const [addressStreet, setAddressStreet] = useState("");
   const [addressNumber, setAddressNumber] = useState("");
@@ -317,7 +324,9 @@ export default function Home() {
   // Estado de cada barra de la pestaña Riesgo, calculado de forma independiente por mapa.
   const riskBarState = (key: RiskMapKey): RiskBarState => {
     if (locationLoading || geoLayer.loading) return { tone: null, status: "Cargando..." };
-    if (!isRiskMatchResolved) return { tone: null, status: "Sin datos" };
+    if (!isRiskMatchResolved || location === null) return { tone: null, status: "Sin datos" };
+
+    if (geoLayer.localidad === null) return { tone: null, status: "Sin mapa para tu ubicación" };
 
     const category = geoLayer.matches[key][0]?.properties?.categoria;
     if (category == null) return { tone: null, status: "Fuera de zona de riesgo" };
@@ -491,13 +500,13 @@ export default function Home() {
         setGeoLayer((current) =>
           current.matches.rio.length > 0 || current.matches.lluvia.length > 0
             ? current
-            : { loading: true, error: null, matches: { rio: [], lluvia: [] } },
+            : { loading: true, error: null, ...NO_RISK },
         );
 
-        const matches = await fetchRiskMatches(latitude, longitude);
+        const result = await fetchRiskMatches(latitude, longitude);
 
         if (!cancelled) {
-          setGeoLayer({ loading: false, error: null, matches });
+          setGeoLayer({ loading: false, error: null, ...result });
         }
       } catch (error) {
         if (!cancelled) {
@@ -505,7 +514,7 @@ export default function Home() {
             loading: false,
             error:
               error instanceof Error ? error.message : "No se pudo verificar la capa geográfica.",
-            matches: { rio: [], lluvia: [] },
+            ...NO_RISK,
           });
         }
       }
@@ -567,6 +576,12 @@ export default function Home() {
         // El doble clic señala un punto (ver abajo); el zoom queda en la rueda y los botones.
         doubleClickZoom: false,
       }).setView(center, 16);
+
+      // Si no hay un punto consultado, se muestra la localidad del usuario completa (el AMGR
+      // mientras no se conoce o si está fuera de las localidades con mapa).
+      if (!selectedPoint) {
+        fitLocality(L, map, userLocalityRef.current ?? "amgr");
+      }
 
       // Se crean los dos mapas base y se muestra el elegido; el otro se agrega al cambiar la opción.
       baseLayersRef.current = {
@@ -682,22 +697,21 @@ export default function Home() {
           const layer = L.geoJSON(geojsonData, {
             pane: "riskPane",
             style: riverZoneStyle,
-            onEachFeature: (feature: any, layerItem: any) => {
-              const category = feature?.properties?.categoria ?? "Zona de riesgo";
-              layerItem.bindPopup(`<strong>${category}</strong><br>Crecida de Ríos (Res. 303/17)`);
+            onEachFeature: (
+              feature: { properties?: Record<string, unknown> },
+              layerItem: { bindPopup: (html: string) => void },
+            ) => {
+              const props = feature.properties ?? {};
+              layerItem.bindPopup(
+                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Crecida de Ríos · ` +
+                  `${escapeHtml(props.localidad ?? "")} (${escapeHtml(props.fuente ?? "")})`,
+              );
             },
           });
 
           riskLayerRef.current = layer;
           if (layerVisibilityRef.current.risk) {
             layer.addTo(map);
-          }
-
-          // Si hay un punto consultado, la vista queda sobre él.
-          if (!selectedPointRef.current && layer.getBounds && layer.getBounds().isValid()) {
-            // Sin animación: si el usuario cambia de pestaña durante el zoom animado, Leaflet falla
-            // al terminar la transición sobre un mapa ya eliminado.
-            map.fitBounds(layer.getBounds().pad(0.2), { animate: false });
           }
         })
         .catch(() => {
@@ -725,7 +739,8 @@ export default function Home() {
             ) => {
               const props = feature.properties ?? {};
               layerItem.bindPopup(
-                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Precipitaciones (Res. 121/14)`,
+                `<strong>${escapeHtml(props.categoria ?? "Zona de riesgo")}</strong><br>Precipitaciones · ` +
+                  `${escapeHtml(props.localidad ?? "")} (${escapeHtml(props.fuente ?? "")})`,
               );
             },
           });
@@ -889,6 +904,18 @@ export default function Home() {
     }
   }, [location]);
 
+  // Al conocer la localidad del usuario (o si cambia), el mapa abierto pasa a mostrarla, salvo que
+  // esté mirando un punto consultado.
+  useEffect(() => {
+    if (geoLayer.localidad === null || geoLayer.localidad === userLocalityRef.current) return;
+    userLocalityRef.current = geoLayer.localidad;
+
+    const map = mapInstanceRef.current;
+    if (map && window.L && !selectedPointRef.current) {
+      fitLocality(window.L, map, geoLayer.localidad);
+    }
+  }, [geoLayer.localidad]);
+
   // Marcador del punto consultado y riesgo de ese punto según los dos mapas.
   useEffect(() => {
     selectedPointRef.current = selectedPoint;
@@ -909,17 +936,17 @@ export default function Home() {
 
     async function loadPointRisk() {
       try {
-        setPointRisk({ loading: true, error: null, matches: { rio: [], lluvia: [] } });
-        const matches = await fetchRiskMatches(latitude, longitude);
+        setPointRisk({ loading: true, error: null, ...NO_RISK });
+        const result = await fetchRiskMatches(latitude, longitude);
         if (!cancelled) {
-          setPointRisk({ loading: false, error: null, matches });
+          setPointRisk({ loading: false, error: null, ...result });
         }
       } catch (error) {
         if (!cancelled) {
           setPointRisk({
             loading: false,
             error: error instanceof Error ? error.message : "No se pudo verificar el riesgo del punto.",
-            matches: { rio: [], lluvia: [] },
+            ...NO_RISK,
           });
         }
       }
@@ -978,6 +1005,14 @@ export default function Home() {
   const mapRisk = selectedPoint ? pointRisk : geoLayer;
   const mapRiskHasPoint = selectedPoint !== null || location !== null;
   const mapRiskHasMatch = mapRisk.matches.rio.length > 0 || mapRisk.matches.lluvia.length > 0;
+  // Localidad cuyos mapas describen las leyendas: la del punto consultado o la del usuario.
+  const mapLocality = LOCALITIES[mapRisk.localidad ?? geoLayer.localidad ?? "amgr"];
+  const riverLevels = RIVER_LEVELS.filter((_, index) => mapLocality.codes.rio.includes(index + 1));
+  const rainLevels = RAIN_LEVELS.filter((_, index) => mapLocality.codes.lluvia.includes(index + 1));
+  const userLocality = geoLayer.localidad ? LOCALITIES[geoLayer.localidad] : null;
+  const knownLocalities = Object.values(LOCALITIES)
+    .map((locality) => locality.name)
+    .join(" y ");
 
   return (
     <div className={styles.page}>
@@ -1008,8 +1043,7 @@ export default function Home() {
                 ambos.
               </p>
               <p className={styles.coverNote}>
-                Esta app está diseñada para el <strong>AMGR</strong> (Área Metropolitana del Gran Resistencia):
-                Resistencia, Barranqueras, Fontana y Puerto Vilelas.
+                Esta app tiene datos de zonas de riesgo para el Área Metropolitana Gran Resistencia, y Colonia Benítez.
               </p>
               <p className={styles.coverNote}>
                 Los datos utilizados se corresponden con la información oficial disponible.
@@ -1092,7 +1126,7 @@ export default function Home() {
                         checked={showRiskLayer}
                         onChange={(event) => setShowRiskLayer(event.target.checked)}
                       />
-                      Riesgo por crecida, Resolución APA 303/17
+                      Riesgo por crecida, {mapLocality.sources.rio}
                     </label>
                     <label>
                       <input
@@ -1100,7 +1134,7 @@ export default function Home() {
                         checked={showRainLayer}
                         onChange={(event) => setShowRainLayer(event.target.checked)}
                       />
-                      Riesgo por precipitaciones, Resolución APA 121/14
+                      Riesgo por precipitaciones, {mapLocality.sources.lluvia}
                     </label>
                     <label>
                       <input
@@ -1124,8 +1158,8 @@ export default function Home() {
                   </div>
                   {showRiskLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida de ríos">
-                      <span className={styles.cotasLegendTitle}>Riesgo por crecida, Resolución APA 303/17</span>
-                      {RIVER_LEVELS.map((level) => (
+                      <span className={styles.cotasLegendTitle}>Riesgo por crecida, {mapLocality.sources.rio}</span>
+                      {riverLevels.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
                           <i style={{ background: level.color }} />
                           {level.label}
@@ -1135,8 +1169,10 @@ export default function Home() {
                   ) : null}
                   {showRainLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por precipitaciones">
-                      <span className={styles.cotasLegendTitle}>Riesgo por precipitaciones, Resolución APA 121/14</span>
-                      {RAIN_LEVELS.map((level) => (
+                      <span className={styles.cotasLegendTitle}>
+                        Riesgo por precipitaciones, {mapLocality.sources.lluvia}
+                      </span>
+                      {rainLevels.map((level) => (
                         <span key={level.tone} className={styles.cotasLegendItem}>
                           <i style={{ background: level.color }} />
                           {level.label}
@@ -1240,20 +1276,30 @@ export default function Home() {
               {mapRisk.error ? <p className={styles.error}>{mapRisk.error}</p> : null}
 
               {!mapRisk.loading && !mapRisk.error && mapRiskHasPoint ? (
-                mapRiskHasMatch ? (
+                mapRisk.localidad === null ? (
+                  <p className={styles.geoNeutral}>
+                    {selectedPoint ? "Este punto está" : "Tu ubicación está"} fuera del área que cubren los mapas de
+                    riesgo hídrico ({knownLocalities}).
+                  </p>
+                ) : mapRiskHasMatch ? (
                   <div className={styles.geoInfo}>
                     {RISK_MAPS.map(({ key, title }) => {
                       const match = mapRisk.matches[key][0];
                       const category = typeof match?.properties?.categoria === "string"
                         ? match.properties.categoria
                         : null;
-                      const meaning = category ? getZoneMeaning(key, getDangerLevel(category).tone) : null;
+                      const meaning =
+                        category && mapLocality.hasZoneMeanings
+                          ? getZoneMeaning(key, getDangerLevel(category).tone)
+                          : null;
                       const color = levelColor(key === "rio" ? RIVER_LEVELS : RAIN_LEVELS, category ?? undefined);
 
                       return (
                         <div key={key} className={styles.geoMatch}>
                           <div className={styles.geoMatchHeader}>
-                            <span>{title}</span>
+                            <span>
+                              {title} · {mapLocality.name} ({mapLocality.sources[key]})
+                            </span>
                             <strong>
                               {category ? <i className={styles.geoMatchSwatch} style={{ background: color }} /> : null}
                               {category ?? "Fuera de zona de riesgo"}
@@ -1321,11 +1367,29 @@ export default function Home() {
           ) : (
             <div className={styles.riskZoneCard}>
               <div className={styles.zoneHeader}>
-                <span>Zona de riesgo hídrico de tu ubicación</span>
+                <span>
+                  Zona de riesgo hídrico de tu ubicación{userLocality ? ` · ${userLocality.name}` : ""}
+                </span>
               </div>
 
-              <RiskBars rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
-              <RiskLevelsGuide rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
+              <RiskBars
+                rio={riskBarState("rio")}
+                lluvia={riskBarState("lluvia")}
+                codes={(userLocality ?? LOCALITIES.amgr).codes}
+              />
+              {isRiskMatchResolved && location !== null && !userLocality ? (
+                <p className={styles.geoNeutral}>
+                  Tu ubicación está fuera del área que cubren los mapas de riesgo hídrico ({knownLocalities}). En
+                  la pestaña Mapa podés consultar un punto de esas localidades.
+                </p>
+              ) : userLocality && !userLocality.hasZoneMeanings ? (
+                <p className={styles.geoNeutral}>
+                  Zonas según el mapa de riesgo hídrico de la Administración Provincial del Agua para{" "}
+                  {userLocality.name} ({userLocality.sources.rio}).
+                </p>
+              ) : (
+                <RiskLevelsGuide rio={riskBarState("rio")} lluvia={riskBarState("lluvia")} />
+              )}
             </div>
           )}
 

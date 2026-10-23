@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findMatchingFeatures, normalizePoint, type PointTuple } from "@/lib/geo";
-import { getRainRiskLayer } from "@/lib/rainRiskLayer";
-import { getRiskLayer } from "@/lib/riskLayer";
+import { findLocality, getLocalityLayer } from "@/lib/localityLayers";
 
-// Capas fijas: riesgo por crecida del río Negro (KML, ver src/lib/riskLayer.ts) y riesgo por
-// precipitaciones (Res. 121/14, ver src/lib/rainRiskLayer.ts). No se acepta una ruta desde la
-// request para no exponer archivos del servidor. Se procesan una vez y quedan en memoria.
+// Capas fijas de la localidad del punto (ver src/lib/localities.ts): riesgo por crecida de ríos y
+// por precipitaciones. No se acepta una ruta desde la request para no exponer archivos del
+// servidor. Se procesan una vez y quedan en memoria. `localidad` es null si el punto está fuera de
+// las localidades con mapa: en ese caso no hay zonas.
 async function matchRiskLayers(coordinates: PointTuple) {
   const point = { type: "Point", coordinates };
-  const [rioLayer, lluviaLayer] = await Promise.all([getRiskLayer(), getRainRiskLayer()]);
-  const rio = findMatchingFeatures(rioLayer, point);
-  const lluvia = findMatchingFeatures(lluviaLayer, point);
+  const localidad = await findLocality(coordinates);
+  const [rio, lluvia] = localidad
+    ? await Promise.all(
+        (["rio", "lluvia"] as const).map(async (map) =>
+          findMatchingFeatures(await getLocalityLayer(localidad, map), point),
+        ),
+      )
+    : [[], []];
 
   return {
     success: true,
     point,
+    localidad,
     rio: { inside: rio.length > 0, matches: rio },
     lluvia: { inside: lluvia.length > 0, matches: lluvia },
   };

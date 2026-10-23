@@ -86,6 +86,11 @@ type Props = {
   lluvia: RiskBarState;
 };
 
+// Niveles de cada mapa que existen en la localidad (códigos 1 a 4, en el orden de los segmentos).
+type Codes = Record<"rio" | "lluvia", number[]>;
+const ALL_CODES: Codes = { rio: [1, 2, 3, 4], lluvia: [1, 2, 3, 4] };
+const withCodes = (segments: Segment[], codes: number[]) => segments.filter((_, index) => codes.includes(index + 1));
+
 function RiskBar({ title, segments, state }: { title: string; segments: Segment[]; state: RiskBarState }) {
   const activeIndex = segments.findIndex((segment) => segment.tone === state.tone);
   const isActive = activeIndex >= 0;
@@ -232,11 +237,11 @@ export function RiskLevelsGuide({ rio, lluvia }: Props) {
   );
 }
 
-export default function RiskBars({ rio, lluvia }: Props) {
+export default function RiskBars({ rio, lluvia, codes = ALL_CODES }: Props & { codes?: Codes }) {
   return (
     <div className={styles.riskBars}>
-      <RiskBar title="Crecida de Ríos" segments={RIVER_SEGMENTS} state={rio} />
-      <RiskBar title="Precipitaciones" segments={RAIN_SEGMENTS} state={lluvia} />
+      <RiskBar title="Crecida de Ríos" segments={withCodes(RIVER_SEGMENTS, codes.rio)} state={rio} />
+      <RiskBar title="Precipitaciones" segments={withCodes(RAIN_SEGMENTS, codes.lluvia)} state={lluvia} />
     </div>
   );
 }
