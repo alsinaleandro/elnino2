@@ -31,14 +31,6 @@ export function getVisits() {
   return row?.value ?? 0;
 }
 
-export type DailyVisits = { date: string; visits: number };
-
-// Visitas de cada día, del más reciente al más antiguo.
-export function getDailyVisits(): DailyVisits[] {
-  const rows = db.prepare("SELECT date, visits FROM daily_visits ORDER BY date DESC").all() as DailyVisits[];
-  return rows.map((row) => ({ ...row }));
-}
-
 // Máximo de ubicaciones por IP en una hora: alcanza para varias personas detrás de la misma IP
 // (los celulares suelen compartirla) y evita que alguien llene el mapa con puntos falsos.
 const LOCATION_RATE_LIMIT = 30;
@@ -63,6 +55,20 @@ export function registerVisitLocation(
     "INSERT INTO visit_locations (created_at, latitude, longitude, accuracy, ip) VALUES (?, ?, ?, ?, ?)",
   ).run(new Date().toISOString(), location.latitude, location.longitude, location.accuracy, ip);
   return true;
+}
+
+export type DailyVisits = { date: string; visits: number };
+
+// Visitas con ubicación GPS de cada día, del más reciente al más antiguo. created_at está en UTC:
+// se pasa a la hora de Argentina (UTC-3, sin horario de verano) para que cada visita caiga en su día.
+export function getDailyVisitLocations(): DailyVisits[] {
+  const rows = db
+    .prepare(
+      `SELECT date(created_at, '-3 hours') AS date, COUNT(*) AS visits
+       FROM visit_locations GROUP BY 1 ORDER BY 1 DESC`,
+    )
+    .all() as DailyVisits[];
+  return rows.map((row) => ({ ...row }));
 }
 
 // Ubicaciones de las visitas de las últimas `hours` horas.
