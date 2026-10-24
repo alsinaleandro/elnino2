@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { getDailyVisitLocations, getVisitLocations } from "@/lib/visits";
+import { getDailyVisitLocations, getVisitLocations, getVisits } from "@/lib/visits";
 import VisitsMap from "./VisitsMap";
 
 // Página interna: no está enlazada desde la app y se pide a los buscadores que no la indexen.
@@ -19,15 +19,22 @@ const cell = { padding: "8px 12px", borderBottom: "1px solid #e5e7eb" } as const
 export default async function Estadisticas() {
   // node:sqlite es síncrono: sin esto Next leería el valor una sola vez, al compilar.
   await connection();
+  const visits = getVisits();
   const locations = getVisitLocations(MAP_HOURS);
   const daily = getDailyVisitLocations();
 
   return (
     <main style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 16px", fontFamily: "var(--font-geist-sans)" }}>
       <h1 style={{ margin: "0 0 24px", fontSize: "1.4rem" }}>Estadísticas</h1>
-      <div style={{ marginBottom: 24 }}>
-        <p style={{ margin: 0, color: "#4b5563" }}>Visitas con ubicación GPS (últimas {MAP_HOURS} h)</p>
-        <p style={{ margin: "4px 0 0", fontSize: "2.5rem", fontWeight: 800 }}>{locations.length.toLocaleString("es-AR")}</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 48px", marginBottom: 24 }}>
+        <div>
+          <p style={{ margin: 0, color: "#4b5563" }}>Visitas totales</p>
+          <p style={{ margin: "4px 0 0", fontSize: "2.5rem", fontWeight: 800 }}>{visits.toLocaleString("es-AR")}</p>
+        </div>
+        <div>
+          <p style={{ margin: 0, color: "#4b5563" }}>Visitas con ubicación GPS (últimas {MAP_HOURS} h)</p>
+          <p style={{ margin: "4px 0 0", fontSize: "2.5rem", fontWeight: 800 }}>{locations.length.toLocaleString("es-AR")}</p>
+        </div>
       </div>
       <VisitsMap visits={locations} />
       <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#4b5563" }}>
@@ -53,6 +60,14 @@ export default async function Estadisticas() {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr style={{ fontWeight: 700 }}>
+              <td style={cell}>Total</td>
+              <td style={{ ...cell, textAlign: "right" }}>
+                {daily.reduce((sum, day) => sum + day.visits, 0).toLocaleString("es-AR")}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       )}
     </main>
