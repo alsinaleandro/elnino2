@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
-# Actualiza elnino2 en el VPS: baja los cambios de GitHub, compila y reinicia PM2.
+# Actualiza elnino2 en el VPS: baja los cambios de GitHub (de la rama de esta carpeta), compila y
+# reinicia PM2.
 # Uso (en el VPS):  ./deploy.sh
 # Si el build falla, vuelve al commit anterior para no dejar la app caída.
+#
+# Cada instalación puede tener un .deploy.env (fuera de git) con su nombre en PM2 y su puerto.
+# Sin él se usan los de producción. El servidor de prueba tiene, por ejemplo:
+#   APP_NAME=elnino2-test
+#   PORT=3002
 
 set -euo pipefail
 
+cd "$(dirname "$(readlink -f "$0")")"
+
 APP_NAME="elnino2"
 PORT=3001
+# shellcheck source=/dev/null
+[[ -f .deploy.env ]] && source .deploy.env
 HEALTH_URL="http://127.0.0.1:${PORT}/"
-
-cd "$(dirname "$(readlink -f "$0")")"
 
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 fail() { printf '\n\033[1;31m✗ %s\033[0m\n' "$*" >&2; exit 1; }
@@ -24,6 +32,8 @@ build_and_restart() {
     pm2 save
   fi
 }
+
+step "Desplegando ${APP_NAME} (puerto ${PORT}, rama $(git rev-parse --abbrev-ref HEAD))"
 
 step "Verificando el repositorio"
 if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
