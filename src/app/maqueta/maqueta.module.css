@@ -453,37 +453,6 @@ button.card {
   height: auto;
 }
 
-/* ---------- Sub-pestañas ---------- */
-
-.subtabs {
-  display: flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 12px;
-  background: #e2e8f0;
-}
-
-.subtab {
-  position: relative;
-  flex: 1;
-  min-height: 38px;
-  padding: 6px 4px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
-  color: #475569;
-  font: inherit;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.subtabActive {
-  background: #ffffff;
-  color: #111827;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
-}
-
 /* ---------- Listas ---------- */
 
 .menu {

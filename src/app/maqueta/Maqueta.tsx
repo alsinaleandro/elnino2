@@ -21,6 +21,7 @@ import { Aceptacion, Ingreso, MiBarrio, TITULOS_BARRIO, type SubBarrio, type Usu
 
 type Seccion = "inicio" | "mapa" | "estado" | "barrio" | "mas";
 type Vista = null | "riesgo" | "plan" | "info" | "avisos" | "ayuda" | "contacto" | "perfil";
+type SubEstado = "rio" | "lluvia" | "nubes";
 
 const SECCIONES: Array<{ key: Seccion; label: string; icon: ReactNode }> = [
   { key: "inicio", label: "Inicio", icon: <path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" /> },
@@ -85,6 +86,12 @@ const TITULOS_VISTA: Record<Exclude<Vista, null>, string> = {
   ayuda: "Teléfonos útiles",
   contacto: "Contactanos",
   perfil: "Mi perfil",
+};
+
+const TITULOS_ESTADO: Record<SubEstado, string> = {
+  rio: "Río Paraná",
+  lluvia: "Pronóstico de lluvia",
+  nubes: "Nubes",
 };
 
 // La maqueta recuerda en el navegador si ya se vio la portada y el plan familiar.
@@ -153,7 +160,7 @@ export default function Maqueta() {
   const [portada, setPortada] = useState(false);
   const [seccion, setSeccion] = useState<Seccion>("inicio");
   const [vista, setVista] = useState<Vista>(null);
-  const [subEstado, setSubEstado] = useState<"rio" | "lluvia" | "nubes">("rio");
+  const [subEstado, setSubEstado] = useState<SubEstado | null>(null);
   const [subBarrio, setSubBarrio] = useState<SubBarrio | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [organizando, setOrganizando] = useState<null | "aceptacion" | "ingreso">(null);
@@ -173,6 +180,7 @@ export default function Maqueta() {
     setSeccion(nueva);
     setVista(nuevaVista);
     setSubBarrio(null);
+    setSubEstado(null);
     if (nueva !== "barrio") setOrganizando(null);
     window.scrollTo({ top: 0 });
   };
@@ -197,6 +205,7 @@ export default function Maqueta() {
     setSeccion("inicio");
     setVista(null);
     setSubBarrio(null);
+    setSubEstado(null);
     setPortada(true);
   };
 
@@ -266,13 +275,16 @@ export default function Maqueta() {
   let titulo: string = vista ? TITULOS_VISTA[vista] : TITULOS[seccion];
   if (seccion === "barrio" && organizando) titulo = "¡Organizate!";
   if (seccion === "barrio" && usuario && subBarrio) titulo = TITULOS_BARRIO[subBarrio];
+  if (seccion === "estado" && subEstado) titulo = TITULOS_ESTADO[subEstado];
   const volver = vista
     ? () => setVista(null)
     : seccion === "barrio" && organizando
       ? () => setOrganizando(null)
       : seccion === "barrio" && usuario && subBarrio
         ? () => setSubBarrio(null)
-        : null;
+        : seccion === "estado" && subEstado
+          ? () => setSubEstado(null)
+          : null;
 
   let contenido: ReactNode = null;
 
@@ -371,27 +383,37 @@ export default function Maqueta() {
   } else if (seccion === "estado") {
     contenido = (
       <>
-        <div className={styles.subtabs} role="tablist">
-          {(
-            [
-              ["rio", "Río"],
-              ["lluvia", "Lluvia"],
-              ["nubes", "Nubes"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={subEstado === key}
-              className={`${styles.subtab} ${subEstado === key ? styles.subtabActive : ""}`}
-              onClick={() => setSubEstado(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {subEstado === "rio" ? (
+        {subEstado === null ? (
+          <div className={styles.menu}>
+            {(
+              [
+                ["rio", "🌊", `${metros(rio.altura)} en Barranqueras${rio.tendencia ? ` · ${rio.tendencia.toLowerCase()}` : ""}`],
+                [
+                  "lluvia",
+                  "🌧️",
+                  `Próxima: ${PROXIMA_LLUVIA.dia}, ${PROXIMA_LLUVIA.mm} mm (${PROXIMA_LLUVIA.probabilidad}%)`,
+                ],
+                ["nubes", "☁️", "Imagen satelital de las nubes sobre el mapa"],
+              ] as const
+            ).map(([key, icono, detalle]) => (
+              <button
+                key={key}
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  setSubEstado(key);
+                  window.scrollTo({ top: 0 });
+                }}
+              >
+                <span className={styles.menuIcon}>{icono}</span>
+                <div>
+                  <strong>{TITULOS_ESTADO[key]}</strong>
+                  <small>{detalle}</small>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : subEstado === "rio" ? (
           <>
             <h2 className={pageStyles.riverTitle}>Estado actual del río Paraná en el puerto Barranqueras</h2>
             <div className={pageStyles.riverGaugeCard}>
