@@ -14,7 +14,7 @@ import RiverGauge from "../RiverGauge";
 import { BARRIO, LOCALIDAD, PLAN_FAMILIAR, PROXIMA_LLUVIA, REPORTES, RIO, ZONA } from "./datos";
 import MapaReportes from "./MapaReportes";
 import styles from "./maqueta.module.css";
-import { Aceptacion, Ingreso, MiBarrio, type Usuario } from "./Organizate";
+import { Aceptacion, Ingreso, MiBarrio, TITULOS_BARRIO, type SubBarrio, type Usuario } from "./Organizate";
 
 // Maqueta navegable de la nueva interfaz (ver ideas.md). Las secciones Estado, Información, Ayuda y
 // Contactanos usan los componentes reales de la app; el resto usa datos de ejemplo (datos.ts).
@@ -154,6 +154,7 @@ export default function Maqueta() {
   const [seccion, setSeccion] = useState<Seccion>("inicio");
   const [vista, setVista] = useState<Vista>(null);
   const [subEstado, setSubEstado] = useState<"rio" | "lluvia" | "nubes">("rio");
+  const [subBarrio, setSubBarrio] = useState<SubBarrio | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [organizando, setOrganizando] = useState<null | "aceptacion" | "ingreso">(null);
   const [plan, setPlan] = useState<string[]>([]);
@@ -171,6 +172,7 @@ export default function Maqueta() {
   const ir = (nueva: Seccion, nuevaVista: Vista = null) => {
     setSeccion(nueva);
     setVista(nuevaVista);
+    setSubBarrio(null);
     if (nueva !== "barrio") setOrganizando(null);
     window.scrollTo({ top: 0 });
   };
@@ -194,6 +196,7 @@ export default function Maqueta() {
     setOrganizando(null);
     setSeccion("inicio");
     setVista(null);
+    setSubBarrio(null);
     setPortada(true);
   };
 
@@ -262,11 +265,14 @@ export default function Maqueta() {
 
   let titulo: string = vista ? TITULOS_VISTA[vista] : TITULOS[seccion];
   if (seccion === "barrio" && organizando) titulo = "¡Organizate!";
+  if (seccion === "barrio" && usuario && subBarrio) titulo = TITULOS_BARRIO[subBarrio];
   const volver = vista
     ? () => setVista(null)
     : seccion === "barrio" && organizando
       ? () => setOrganizando(null)
-      : null;
+      : seccion === "barrio" && usuario && subBarrio
+        ? () => setSubBarrio(null)
+        : null;
 
   let contenido: ReactNode = null;
 
@@ -414,7 +420,15 @@ export default function Maqueta() {
     );
   } else if (seccion === "barrio") {
     contenido = usuario ? (
-      <MiBarrio usuario={usuario} onCambiar={setUsuario} />
+      <MiBarrio
+        usuario={usuario}
+        onCambiar={setUsuario}
+        sub={subBarrio}
+        onSub={(sub) => {
+          setSubBarrio(sub);
+          window.scrollTo({ top: 0 });
+        }}
+      />
     ) : organizando === "aceptacion" ? (
       <Aceptacion onAceptar={() => setOrganizando("ingreso")} onCancelar={() => setOrganizando(null)} />
     ) : organizando === "ingreso" ? (

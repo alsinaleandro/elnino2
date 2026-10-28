@@ -196,10 +196,28 @@ export function Ingreso({ onListo }: { onListo: (usuario: Usuario) => void }) {
 
 // ---------- Mi barrio ----------
 
-type Sub = "novedades" | "chat" | "delegados" | "ayuda";
+export type SubBarrio = "novedades" | "chat" | "delegados" | "ayuda";
 
-export function MiBarrio({ usuario, onCambiar }: { usuario: Usuario; onCambiar: (usuario: Usuario) => void }) {
-  const [sub, setSub] = useState<Sub>("novedades");
+export const TITULOS_BARRIO: Record<SubBarrio, string> = {
+  novedades: "Novedades",
+  chat: "Chat del barrio",
+  delegados: "Delegados",
+  ayuda: "Ayuda mutua",
+};
+
+// Sin pantalla elegida (sub = null) se muestra el menú del barrio; el título y la flecha para volver
+// los pone Maqueta, igual que en la sección Más.
+export function MiBarrio({
+  usuario,
+  onCambiar,
+  sub,
+  onSub,
+}: {
+  usuario: Usuario;
+  onCambiar: (usuario: Usuario) => void;
+  sub: SubBarrio | null;
+  onSub: (sub: SubBarrio) => void;
+}) {
   const [mensajes, setMensajes] = useState(CHAT.map((mensaje) => ({ ...mensaje, mio: false })));
   const [texto, setTexto] = useState("");
   const [pedidos, setPedidos] = useState<Pedido[]>(AYUDA);
@@ -220,36 +238,48 @@ export function MiBarrio({ usuario, onCambiar }: { usuario: Usuario; onCambiar: 
     setTexto("");
   };
 
+  const seguido = delegados.find((delegado) => delegado.id === usuario.delegadoSeguido);
+  const ultimo = mensajes[mensajes.length - 1];
+  const ofrecen = pedidos.filter((pedido) => pedido.tipo === "ofrezco").length;
+  const necesitan = pedidos.length - ofrecen;
+  const items: Array<[SubBarrio, string, string]> = [
+    ["novedades", "📢", `${NOVEDADES.length} novedades del PTP Chaco · la última ${NOVEDADES[0].hace}`],
+    ["chat", "💬", ultimo ? `${mensajes.length} mensajes · último de ${ultimo.autor}` : "Todavía no hay mensajes"],
+    [
+      "delegados",
+      "🙋",
+      usuario.esDelegado
+        ? `Sos delegado/a · ${delegados.length} delegados en el barrio`
+        : seguido
+          ? `Seguís a ${seguido.nombre}`
+          : `No seguís a ningún delegado · hay ${delegados.length}`,
+    ],
+    ["ayuda", "🤝", `${necesitan} ${necesitan === 1 ? "necesita" : "necesitan"} · ${ofrecen} ${ofrecen === 1 ? "ofrece" : "ofrecen"}`],
+  ];
+
   return (
     <>
-      <div className={styles.barrioHead}>
-        <strong>{usuario.barrio}</strong>
-        <span>
-          Comité de emergencia · {VECINOS_EN_EL_BARRIO} vecinos · {delegados.length} delegados
-        </span>
-      </div>
-
-      <div className={styles.subtabs} role="tablist">
-        {(
-          [
-            ["novedades", "Novedades"],
-            ["chat", "Chat"],
-            ["delegados", "Delegados"],
-            ["ayuda", "Ayuda"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={sub === key}
-            className={`${styles.subtab} ${sub === key ? styles.subtabActive : ""}`}
-            onClick={() => setSub(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      {sub === null ? (
+        <>
+          <div className={styles.barrioHead}>
+            <strong>{usuario.barrio}</strong>
+            <span>
+              Comité de emergencia · {VECINOS_EN_EL_BARRIO} vecinos · {delegados.length} delegados
+            </span>
+          </div>
+          <div className={styles.menu}>
+            {items.map(([key, icono, detalle]) => (
+              <button key={key} type="button" className={styles.menuItem} onClick={() => onSub(key)}>
+                <span className={styles.menuIcon}>{icono}</span>
+                <div>
+                  <strong>{TITULOS_BARRIO[key]}</strong>
+                  <small>{detalle}</small>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {sub === "novedades" ? (
         <>
