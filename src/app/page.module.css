@@ -241,6 +241,34 @@
   box-shadow: 0 10px 24px rgba(17, 24, 39, 0.2);
 }
 
+/* Invitación a sumarse al comité de barrio (/organizate). */
+.organizate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fef3c7;
+  color: #78350f;
+  font-weight: 600;
+  text-align: center;
+}
+
+.organizateButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: #b45309;
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 /* Botón Siguiente al final de cada pestaña. */
 .nextNav {
   display: flex;

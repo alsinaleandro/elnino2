@@ -1,0 +1,172 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { isGoogleConfigured } from "@/lib/google";
+import { getCurrentNeighbor } from "@/lib/neighbors";
+import ConfirmButton from "../ConfirmButton";
+import { deleteAccount, logout } from "./actions";
+import DatosInfo from "./DatosInfo";
+import ProfileForm from "./ProfileForm";
+import styles from "./organizate.module.css";
+
+// "¡Organizate!" (Idea 1, etapa 1): aceptación de datos, ingreso con Google y datos del vecino.
+// Sin sesión: pantalla de aceptación y después el botón de Google (?paso=ingreso). Con sesión pero
+// sin WhatsApp: completar datos. Con todo: la página del vecino.
+export const metadata: Metadata = {
+  title: "¡Organizate! · Comités de barrio",
+  description: "Sumate al comité de emergencia de tu barrio",
+};
+
+const ERRORS: Record<string, string> = {
+  google: "No pudimos completar el ingreso con Google. Probá de nuevo.",
+  aceptar: "Todavía no te sumaste. Leé cómo usamos tus datos y tocá \"Estoy de acuerdo\".",
+  config: "El ingreso con Google todavía no está configurado en este servidor.",
+};
+
+function GoogleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
+  );
+}
+
+// Los enlaces van a una ruta de la API que redirige a Google: tiene que ser un <a> común, no <Link>.
+function GoogleButton({ accept }: { accept: boolean }) {
+  return (
+    <a className={styles.googleBtn} href={accept ? "/api/auth/google?acepto=1" : "/api/auth/google"}>
+      <GoogleIcon />
+      Continuar con Google
+    </a>
+  );
+}
+
+export default async function OrganizatePage({ searchParams }: PageProps<"/organizate">) {
+  const { paso, error, borrado } = await searchParams;
+  const neighbor = await getCurrentNeighbor();
+  const errorMessage = typeof error === "string" ? ERRORS[error] : undefined;
+
+  let content;
+  if (!neighbor && paso === "ingreso") {
+    content = (
+      <>
+        <h1>Ingresá</h1>
+        <p className={styles.muted}>
+          Usamos tu cuenta de Google solo para identificarte. No publicamos nada en tu nombre.
+        </p>
+        {isGoogleConfigured() ? <GoogleButton accept /> : <p className={styles.error}>{ERRORS.config}</p>}
+        <Link href="/organizate" className={styles.btnGhost}>
+          Volver
+        </Link>
+      </>
+    );
+  } else if (!neighbor) {
+    content = (
+      <>
+        {borrado ? (
+          <p className={styles.success} role="status">
+            Borramos tus datos y saliste del comité.
+          </p>
+        ) : null}
+        <h1>Sumate al comité de emergencia de tu barrio</h1>
+        <p className={styles.notState}>
+          Esta iniciativa <strong>no es del Estado</strong>: es un esfuerzo de organización vecinal coordinado por el{" "}
+          <strong>PTP Chaco</strong>.
+        </p>
+        <p>
+          Cuando el agua sube, los que primero ayudan son los vecinos. Esta sección es para organizarnos barrio por
+          barrio: conocernos, avisarnos y estar preparados.
+        </p>
+        <p className={styles.muted}>
+          ¿Ya te sumaste? <a href="/api/auth/google">Entrá con tu cuenta de Google</a>.
+        </p>
+        <DatosInfo />
+        <p>
+          Al tocar &quot;Estoy de acuerdo&quot; confirmás que <strong>tenés 18 años o más</strong> y que leíste esta
+          información.
+        </p>
+        <Link href="/organizate?paso=ingreso" className={styles.btnPrimary}>
+          Estoy de acuerdo
+        </Link>
+        <Link href="/" className={styles.btnGhost}>
+          Ahora no
+        </Link>
+      </>
+    );
+  } else if (!neighbor.whatsapp) {
+    content = (
+      <>
+        <h1>Tus datos</h1>
+        <p className={styles.muted}>Entraste como {neighbor.email}. Revisá tu nombre y agregá tu WhatsApp.</p>
+        <ProfileForm
+          firstName={neighbor.firstName}
+          lastName={neighbor.lastName}
+          whatsapp=""
+          submitLabel="Sumarme al comité"
+        />
+      </>
+    );
+  } else {
+    content = (
+      <>
+        <h1>¡Ya sos parte, {neighbor.firstName}!</h1>
+        <p className={styles.success}>
+          Te sumaste al comité de emergencia de tu barrio. Muy pronto vas a poder elegir tu barrio y hablar con tus
+          vecinos en el chat.
+        </p>
+
+        <h2>Tus datos</h2>
+        <p className={styles.muted}>
+          En el chat del barrio te van a ver como{" "}
+          <strong>
+            {neighbor.firstName} {neighbor.lastName[0]}.
+          </strong>{" "}
+          E-mail: {neighbor.email}.
+        </p>
+        <ProfileForm
+          firstName={neighbor.firstName}
+          lastName={neighbor.lastName}
+          whatsapp={neighbor.whatsapp}
+          submitLabel="Guardar cambios"
+        />
+
+        <details className={styles.details}>
+          <summary>Cómo usamos tus datos</summary>
+          <DatosInfo />
+        </details>
+
+        <form action={logout} className={styles.form}>
+          <button type="submit" className={styles.btnSecondary}>
+            Cerrar sesión
+          </button>
+        </form>
+        <form action={deleteAccount} className={styles.form}>
+          <ConfirmButton
+            className={styles.btnDanger}
+            message="¿Borrar tus datos y salir del comité? No se puede deshacer."
+          >
+            Borrar mis datos y salir del comité
+          </ConfirmButton>
+        </form>
+      </>
+    );
+  }
+
+  return (
+    <div className={styles.page}>
+      <main className={styles.card}>
+        <Link href="/" className={styles.back}>
+          ← Volver a la app
+        </Link>
+        {errorMessage ? (
+          <p className={styles.error} role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+        {content}
+      </main>
+    </div>
+  );
+}

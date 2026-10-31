@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { countMessages, isAdminToken, listAdminMessages, type Filter } from "@/lib/admin";
 import { mapLink, whatsappLink } from "@/lib/links";
 import { moderateMessage } from "./actions";
-import ConfirmButton from "./ConfirmButton";
+import ConfirmButton from "../../ConfirmButton";
 import styles from "./admin.module.css";
 
 // Administración de los mensajes públicos de la pestaña Contactanos. Solo se entra con la URL que

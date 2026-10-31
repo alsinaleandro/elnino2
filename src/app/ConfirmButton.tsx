@@ -12,8 +12,8 @@ export default function ConfirmButton({
 }: {
   message: string;
   className?: string;
-  name: string;
-  value: string;
+  name?: string;
+  value?: string;
   children: ReactNode;
 }) {
   return (

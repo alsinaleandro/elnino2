@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
@@ -1048,6 +1049,12 @@ export default function Home() {
               <p className={styles.coverNote}>
                 Los datos utilizados se corresponden con la información oficial disponible.
               </p>
+              <div className={styles.organizate}>
+                <p>Cuando el agua sube, los que primero ayudan son los vecinos.</p>
+                <Link href="/organizate" className={styles.organizateButton}>
+                  ¡Organizate!
+                </Link>
+              </div>
               {nextTab ? (
                 <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
                   Siguiente

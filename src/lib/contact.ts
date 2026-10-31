@@ -22,7 +22,7 @@ const cleanMessage = (value: unknown) =>
     ? value.replace(/\r\n?/g, "\n").replace(/[^\S\n]+/g, " ").replace(/\n{3,}/g, "\n\n").trim()
     : "";
 
-function requireName(value: unknown, label: string) {
+export function requireName(value: unknown, label: string) {
   const name = clean(value);
   if (name.length < 2 || name.length > 40 || !/^[\p{L}' .-]+$/u.test(name)) {
     throw new ValidationError(`Revisá el ${label}: solo letras, entre 2 y 40.`);
@@ -38,7 +38,7 @@ function requireEmail(value: unknown) {
   return email;
 }
 
-function requireWhatsapp(value: unknown) {
+export function requireWhatsapp(value: unknown) {
   const whatsapp = clean(value).replace(/[\s().-]/g, "");
   if (!/^\+?\d{8,15}$/.test(whatsapp)) {
     throw new ValidationError("Revisá el WhatsApp: con característica, por ejemplo 362 4123456.");

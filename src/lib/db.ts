@@ -86,6 +86,31 @@ function migrate(db: DatabaseSync) {
       date   TEXT PRIMARY KEY,
       visits INTEGER NOT NULL DEFAULT 0
     );
+
+    -- Vecinos que se sumaron a los comités de barrio (Idea 1), con su cuenta de Google.
+    -- "consent_at" es cuándo aceptaron la pantalla "Cómo usamos tus datos". WhatsApp y e-mail no
+    -- los ve ningún otro vecino. Mientras "whatsapp" sea NULL, el vecino no completó sus datos.
+    CREATE TABLE IF NOT EXISTS neighbors (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      google_sub TEXT NOT NULL UNIQUE,
+      email      TEXT NOT NULL,
+      first_name TEXT NOT NULL,
+      last_name  TEXT NOT NULL,
+      whatsapp   TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      consent_at TEXT NOT NULL
+    );
+
+    -- Sesiones abiertas. Se guarda el hash del token, no el token: si se filtra la base, no
+    -- sirve para entrar como otro vecino.
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash  TEXT PRIMARY KEY,
+      neighbor_id INTEGER NOT NULL,
+      created_at  TEXT NOT NULL,
+      expires_at  TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS sessions_neighbor ON sessions (neighbor_id);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
