@@ -108,6 +108,48 @@
   font-weight: 400;
 }
 
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: none;
+}
+
+.choices legend {
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.choice:has(input:checked) {
+  border-color: #111827;
+  background: #f3f4f6;
+  font-weight: 700;
+}
+
+.choice input {
+  width: 18px;
+  height: 18px;
+  accent-color: #111827;
+}
+
+.choice small {
+  font-weight: 400;
+  color: #6b7280;
+}
+
 .details {
   display: flex;
   flex-direction: column;

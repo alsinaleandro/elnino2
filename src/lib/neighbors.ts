@@ -17,6 +17,7 @@ export type Neighbor = {
   lastName: string;
   whatsapp: string | null;
   createdAt: string;
+  barrio: { id: number; name: string; localidad: string | null } | null;
 };
 
 type NeighborRow = {
@@ -26,6 +27,9 @@ type NeighborRow = {
   last_name: string;
   whatsapp: string | null;
   created_at: string;
+  barrio_id: number | null;
+  barrio_name: string | null;
+  barrio_localidad: string | null;
 };
 
 const toNeighbor = (row: NeighborRow): Neighbor => ({
@@ -35,6 +39,10 @@ const toNeighbor = (row: NeighborRow): Neighbor => ({
   lastName: row.last_name,
   whatsapp: row.whatsapp,
   createdAt: row.created_at,
+  barrio:
+    row.barrio_id !== null && row.barrio_name !== null
+      ? { id: row.barrio_id, name: row.barrio_name, localidad: row.barrio_localidad }
+      : null,
 });
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -127,8 +135,11 @@ export async function getCurrentNeighbor() {
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT n.id, n.email, n.first_name, n.last_name, n.whatsapp, n.created_at
-         FROM sessions s JOIN neighbors n ON n.id = s.neighbor_id
+      `SELECT n.id, n.email, n.first_name, n.last_name, n.whatsapp, n.created_at,
+              b.id AS barrio_id, b.name AS barrio_name, b.localidad AS barrio_localidad
+         FROM sessions s
+         JOIN neighbors n ON n.id = s.neighbor_id
+         LEFT JOIN barrios b ON b.id = n.barrio_id
         WHERE s.token_hash = ? AND s.expires_at > ?`,
     )
     .get(hashToken(token), new Date().toISOString()) as NeighborRow | undefined;

@@ -111,6 +111,44 @@ function migrate(db: DatabaseSync) {
       expires_at  TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS sessions_neighbor ON sessions (neighbor_id);
+
+    -- Barrios (Idea 1). Se cargan a demanda: los de OpenStreetMap se copian con su polígono
+    -- (GeoJSON, licencia ODbL) la primera vez que un vecino cae adentro; los que no están en OSM los
+    -- escribe un vecino y quedan sin polígono, ubicados por el punto de quien los cargó (o sin
+    -- ubicación, si no compartió el GPS).
+    -- "normalized_name" (minúsculas, sin acentos ni "barrio") sirve para no duplicar nombres.
+    CREATE TABLE IF NOT EXISTS barrios (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      localidad       TEXT,
+      source          TEXT NOT NULL CHECK (source IN ('osm', 'vecino')),
+      osm_type        TEXT,
+      osm_id          INTEGER,
+      geometry        TEXT,
+      min_lat         REAL,
+      min_lon         REAL,
+      max_lat         REAL,
+      max_lon         REAL,
+      center_lat      REAL,
+      center_lon      REAL,
+      created_at      TEXT NOT NULL,
+      UNIQUE (osm_type, osm_id)
+    );
+    CREATE INDEX IF NOT EXISTS barrios_bbox ON barrios (min_lat, max_lat, min_lon, max_lon);
+    CREATE INDEX IF NOT EXISTS barrios_center ON barrios (center_lat, center_lon);
+    CREATE INDEX IF NOT EXISTS barrios_name ON barrios (normalized_name);
+
+    -- Puntos GPS de los vecinos de barrios sin polígono, sin decir de quién son: a futuro sirven
+    -- para dibujar un polígono aproximado.
+    CREATE TABLE IF NOT EXISTS barrio_points (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      barrio_id  INTEGER NOT NULL,
+      latitude   REAL NOT NULL,
+      longitude  REAL NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS barrio_points_barrio ON barrio_points (barrio_id);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
@@ -119,6 +157,8 @@ function migrate(db: DatabaseSync) {
   addColumn(db, "private_messages", "latitude", "REAL");
   addColumn(db, "private_messages", "longitude", "REAL");
   addColumn(db, "private_messages", "accuracy", "REAL");
+  // Barrio donde vive el vecino (NULL mientras no lo eligió).
+  addColumn(db, "neighbors", "barrio_id", "INTEGER");
 }
 
 function addColumn(db: DatabaseSync, table: string, column: string, definition: string) {

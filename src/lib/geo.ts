@@ -107,7 +107,7 @@ function polygonContainsPoint(polygon: GeoJsonPolygon, point: PointTuple) {
   return true;
 }
 
-function geometryContainsPoint(geometry: GeoJsonGeometry, point: PointTuple): boolean {
+export function geometryContainsPoint(geometry: GeoJsonGeometry, point: PointTuple): boolean {
   if (!geometry) {
     return false;
   }

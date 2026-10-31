@@ -4,13 +4,15 @@ import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
 import ConfirmButton from "../ConfirmButton";
 import { deleteAccount, logout } from "./actions";
+import BarrioForm from "./BarrioForm";
 import DatosInfo from "./DatosInfo";
 import ProfileForm from "./ProfileForm";
 import styles from "./organizate.module.css";
 
-// "¡Organizate!" (Idea 1, etapa 1): aceptación de datos, ingreso con Google y datos del vecino.
+// "¡Organizate!" (Idea 1): aceptación de datos, ingreso con Google, datos del vecino y barrio.
 // Sin sesión: pantalla de aceptación y después el botón de Google (?paso=ingreso). Con sesión pero
-// sin WhatsApp: completar datos. Con todo: la página del vecino.
+// sin WhatsApp: completar datos. Sin barrio (o con ?paso=barrio): elegir barrio. Con todo: la
+// página del vecino.
 export const metadata: Metadata = {
   title: "¡Organizate! · Comités de barrio",
   description: "Sumate al comité de emergencia de tu barrio",
@@ -108,14 +110,31 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
         />
       </>
     );
+  } else if (!neighbor.barrio || paso === "barrio") {
+    content = (
+      <>
+        <h1>¿En qué barrio vivís?</h1>
+        {neighbor.barrio ? (
+          <p className={styles.muted}>
+            Hoy figurás en <strong>{neighbor.barrio.name}</strong>.{" "}
+            <Link href="/organizate">No cambiarlo</Link>
+          </p>
+        ) : null}
+        <BarrioForm current={neighbor.barrio} />
+      </>
+    );
   } else {
     content = (
       <>
         <h1>¡Ya sos parte, {neighbor.firstName}!</h1>
         <p className={styles.success}>
-          Te sumaste al comité de emergencia de tu barrio. Muy pronto vas a poder elegir tu barrio y hablar con tus
-          vecinos en el chat.
+          Te sumaste al comité de emergencia de <strong>{neighbor.barrio.name}</strong>
+          {neighbor.barrio.localidad ? ` (${neighbor.barrio.localidad})` : ""}. Muy pronto vas a poder hablar con tus
+          vecinos en el chat del barrio.
         </p>
+        <Link href="/organizate?paso=barrio" className={styles.btnGhost}>
+          Cambiar mi barrio
+        </Link>
 
         <h2>Tus datos</h2>
         <p className={styles.muted}>

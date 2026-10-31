@@ -35,6 +35,11 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 - Los mensajes del chat se guardan en la base de datos.
 - **No hay mensajes privados dentro de la app.** El chat del barrio es exclusivamente público, y los datos personales de cada vecino permanecen ocultos (decidido el 27/10/2026). La única excepción es el WhatsApp de los delegados (ver Idea 3).
 
+**Implementación** (en la rama `test`, página `/organizate`)
+- Etapa 1, hecha (31/10/2026): pantalla de aceptación, ingreso con Google (sin librerías, `src/lib/google.ts`), datos del vecino, cerrar sesión y borrar mis datos. El ingreso con e-mail quedó para más adelante.
+- Etapa 2, hecha (31/10/2026): detección del barrio con los pasos 1 a 4 de arriba (`src/lib/barrios.ts`, `src/lib/overpass.ts`). Se puede cambiar el barrio después.
+- Etapa 3, pendiente: chat del barrio.
+
 **Puntos a definir más adelante**
 - Diferencia entre dónde está el vecino ahora y dónde vive: si se registra desde el trabajo, el GPS daría otro barrio. Conviene que la app proponga el barrio detectado y el usuario lo confirme o lo corrija.
 - Privacidad: cumplir la Ley 25.326 de Protección de Datos Personales (consentimiento explícito, finalidad informada, posibilidad de borrar los datos). Definir quién ve el WhatsApp y el email de cada vecino.
