@@ -68,7 +68,7 @@ function migrate(db: DatabaseSync) {
     );
 
     -- Una fila por visita en la que el visitante compartió su ubicación GPS. Se muestran como
-    -- puntos en /estadisticas.
+    -- puntos en el panel (/ptpadmin/estadisticas).
     CREATE TABLE IF NOT EXISTS visit_locations (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       created_at TEXT NOT NULL,

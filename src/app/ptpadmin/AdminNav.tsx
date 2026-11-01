@@ -3,10 +3,12 @@ import { adminLogout } from "./actions";
 import styles from "./admin.module.css";
 
 // Secciones del panel de administración y el botón para cerrar la sesión.
-export default function AdminNav({ active }: { active: "mensajes" | "novedades" }) {
+// Nombres cortos para que las tres pestañas y "Salir" entren en el ancho de un celular.
+export default function AdminNav({ active }: { active: "mensajes" | "novedades" | "estadisticas" }) {
   const items = [
-    { key: "mensajes", label: "Mensajes públicos", href: "/ptpadmin/mensajes" },
+    { key: "mensajes", label: "Mensajes", href: "/ptpadmin/mensajes" },
     { key: "novedades", label: "Novedades", href: "/ptpadmin/novedades" },
+    { key: "estadisticas", label: "Estadísticas", href: "/ptpadmin/estadisticas" },
   ] as const;
 
   return (

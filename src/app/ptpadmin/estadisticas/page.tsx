@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
+import { requireAdmin } from "@/lib/adminAuth";
 import { getDailyVisitLocations, getVisitLocations, getVisits } from "@/lib/visits";
+import AdminNav from "../AdminNav";
+import styles from "../admin.module.css";
 import VisitsMap from "./VisitsMap";
 
-// Página interna: no está enlazada desde la app y se pide a los buscadores que no la indexen.
-export const metadata: Metadata = {
-  title: "Estadísticas",
-  robots: { index: false, follow: false },
-};
+// Visitas de la app y mapa de las visitas con ubicación GPS (necesita la sesión del panel).
+export const metadata: Metadata = { title: "Estadísticas · Administración" };
 
 // El mapa muestra solo las visitas recientes.
 const MAP_HOURS = 24;
@@ -16,15 +15,16 @@ const DAY = new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "2-digit",
 
 const cell = { padding: "8px 12px", borderBottom: "1px solid #e5e7eb" } as const;
 
-export default async function Estadisticas() {
-  // node:sqlite es síncrono: sin esto Next leería el valor una sola vez, al compilar.
-  await connection();
+export default async function AdminStatsPage() {
+  // Lee la cookie de sesión: con eso la página ya se arma en cada pedido, no al compilar.
+  await requireAdmin();
   const visits = getVisits();
   const locations = getVisitLocations(MAP_HOURS);
   const daily = getDailyVisitLocations();
 
   return (
-    <main style={{ maxWidth: "56rem", margin: "0 auto", padding: "48px 16px", fontFamily: "var(--font-geist-sans)" }}>
+    <main className={styles.page}>
+      <AdminNav active="estadisticas" />
       <h1 style={{ margin: "0 0 24px", fontSize: "1.4rem" }}>Estadísticas</h1>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 48px", marginBottom: 24 }}>
         <div>

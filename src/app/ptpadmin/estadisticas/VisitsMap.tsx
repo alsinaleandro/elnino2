@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadLeaflet, removeMap } from "../leaflet";
+import { loadLeaflet, removeMap } from "../../leaflet";
 import type { VisitLocation } from "@/lib/visits";
 
 // Resistencia, Barranqueras, Fontana y Puerto Vilelas: el mapa arranca mostrando esta zona
