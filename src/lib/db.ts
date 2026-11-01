@@ -234,6 +234,25 @@ function applyMigrations(db: DatabaseSync) {
       expires_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS email_tokens_email ON email_tokens (email, created_at);
+
+    -- Reportes colaborativos de inundaciones (Idea 2). Cada vecino tiene un solo punto vigente: al
+    -- reportar de nuevo, el anterior queda con "removed_at" (también si lo borra su autor) y se
+    -- conserva como historial. "cause" es NULL para "seco". Se ve en el mapa hasta "expires_at".
+    -- Al borrar un vecino se borran sus reportes.
+    CREATE TABLE IF NOT EXISTS flood_reports (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      neighbor_id INTEGER NOT NULL,
+      latitude    REAL NOT NULL,
+      longitude   REAL NOT NULL,
+      accuracy    REAL,
+      status      TEXT NOT NULL CHECK (status IN ('seco', 'anegada', 'intransitable')),
+      cause       TEXT CHECK (cause IN ('lluvia', 'rio')),
+      created_at  TEXT NOT NULL,
+      expires_at  TEXT NOT NULL,
+      removed_at  TEXT
+    );
+    CREATE INDEX IF NOT EXISTS flood_reports_active ON flood_reports (removed_at, expires_at);
+    CREATE INDEX IF NOT EXISTS flood_reports_neighbor ON flood_reports (neighbor_id, created_at);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");

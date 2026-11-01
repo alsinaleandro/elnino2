@@ -6,8 +6,11 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
 import AppNav, { AppHeader, MenuList, SECTIONS, sectionHref, type SectionKey } from "./AppNav";
+import { FLOOD_STATUS_INFO, FLOOD_STATUSES, type FloodData } from "@/lib/floodKinds";
 import CloudsView from "./CloudsView";
 import ContactView from "./ContactView";
+import { buildFloodLayer, FLOOD_PANE } from "./floodLayer";
+import FloodReport from "./FloodReport";
 import HelpView from "./HelpView";
 import InfoGuide from "./InfoGuide";
 import { loadLeaflet, removeMap } from "./leaflet";
@@ -283,6 +286,11 @@ export default function Home({ section, member, welcome, account }: Props) {
   const [showRainLayer, setShowRainLayer] = useState(false);
   const [showDefensaLayer, setShowDefensaLayer] = useState(false);
   const [showBombeoLayer, setShowBombeoLayer] = useState(false);
+  // Reportes de inundaciones de los vecinos (Idea 2): se piden al abrir el mapa y al reportar.
+  const [floodData, setFloodData] = useState<FloodData | null>(null);
+  const [showFloodLayer, setShowFloodLayer] = useState(true);
+  const floodDataRef = useRef<FloodData | null>(null);
+  const floodLayerRef = useRef<LeafletLayer | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
@@ -290,7 +298,7 @@ export default function Home({ section, member, welcome, account }: Props) {
   const rainLayerRef = useRef<LeafletLayer | null>(null);
   const defensaLayerRef = useRef<LeafletLayer | null>(null);
   const bombeoLayerRef = useRef<LeafletLayer | null>(null);
-  const layerVisibilityRef = useRef({ risk: true, rain: false, defensa: false, bombeo: false });
+  const layerVisibilityRef = useRef({ risk: true, rain: false, defensa: false, bombeo: false, flood: true });
   // Mapa base de la pestaña Mapa: calles (OpenStreetMap) o imagen satelital.
   const [baseMap, setBaseMap] = useState<BaseMapKey>("osm");
   const baseMapRef = useRef<BaseMapKey>("osm");
@@ -584,6 +592,7 @@ export default function Home({ section, member, welcome, account }: Props) {
       map.createPane("rainPane").style.zIndex = "420";
       map.createPane("defensaPane").style.zIndex = "430";
       map.createPane("bombeoPane").style.zIndex = "440";
+      map.createPane(FLOOD_PANE).style.zIndex = "450";
       map.createPane("userPane").style.zIndex = "650";
       map.createPane("pointPane").style.zIndex = "660";
 
@@ -805,7 +814,20 @@ export default function Home({ section, member, welcome, account }: Props) {
         });
 
       mapInstanceRef.current = map;
+
+      // Si los reportes llegaron antes que Leaflet, se dibujan ahora.
+      if (floodDataRef.current) {
+        floodLayerRef.current = buildFloodLayer(L, floodDataRef.current);
+        if (layerVisibilityRef.current.flood) floodLayerRef.current?.addTo(map);
+      }
     };
+
+    fetch("/api/inundaciones")
+      .then((response) => response.json())
+      .then((data: FloodData) => {
+        if (!cancelled && Array.isArray(data?.reports)) setFloodData(data);
+      })
+      .catch(() => {});
 
     loadLeaflet()
       .then(initializeMap)
@@ -824,6 +846,7 @@ export default function Home({ section, member, welcome, account }: Props) {
       rainLayerRef.current = null;
       defensaLayerRef.current = null;
       bombeoLayerRef.current = null;
+      floodLayerRef.current = null;
       baseLayersRef.current = null;
       if (mapInstanceRef.current) {
         removeMap(mapInstanceRef.current);
@@ -839,6 +862,7 @@ export default function Home({ section, member, welcome, account }: Props) {
       rain: showRainLayer,
       defensa: showDefensaLayer,
       bombeo: showBombeoLayer,
+      flood: showFloodLayer,
     };
     const map = mapInstanceRef.current;
     if (!map) return;
@@ -848,13 +872,25 @@ export default function Home({ section, member, welcome, account }: Props) {
       [rainLayerRef.current, showRainLayer],
       [defensaLayerRef.current, showDefensaLayer],
       [bombeoLayerRef.current, showBombeoLayer],
+      [floodLayerRef.current, showFloodLayer],
     ];
     for (const [layer, visible] of layers) {
       if (!layer) continue;
       if (visible && !map.hasLayer(layer)) layer.addTo(map);
       if (!visible && map.hasLayer(layer)) layer.remove();
     }
-  }, [showRiskLayer, showRainLayer, showDefensaLayer, showBombeoLayer]);
+  }, [showRiskLayer, showRainLayer, showDefensaLayer, showBombeoLayer, showFloodLayer]);
+
+  // Vuelve a dibujar los reportes de inundaciones cuando llegan o cambian.
+  useEffect(() => {
+    floodDataRef.current = floodData;
+    const map = mapInstanceRef.current;
+    if (!map || !window.L || !floodData) return;
+
+    floodLayerRef.current?.remove();
+    floodLayerRef.current = buildFloodLayer(window.L, floodData);
+    if (layerVisibilityRef.current.flood) floodLayerRef.current?.addTo(map);
+  }, [floodData]);
 
   // Cambiar el mapa base sin volver a crear el mapa.
   useEffect(() => {
@@ -1211,10 +1247,41 @@ export default function Home({ section, member, welcome, account }: Props) {
                       />
                       Estaciones de bombeo
                     </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={showFloodLayer}
+                        onChange={(event) => setShowFloodLayer(event.target.checked)}
+                      />
+                      Inundaciones reportadas por vecinos
+                    </label>
                   </fieldset>
                   <div className={styles.mapWrap}>
                     <div ref={mapContainerRef} className={styles.map} />
                   </div>
+                  <FloodReport
+                    data={floodData}
+                    location={location}
+                    selectedPoint={selectedPoint}
+                    onChange={(data) => {
+                      setFloodData(data);
+                      setShowFloodLayer(true);
+                    }}
+                  />
+                  {showFloodLayer ? (
+                    <div className={styles.cotasLegend} aria-label="Referencias de inundaciones reportadas por vecinos">
+                      <span className={styles.cotasLegendTitle}>
+                        Inundaciones reportadas por vecinos (no es información oficial)
+                        {floodData ? ` · ${floodData.reports.length} vigentes` : ""}
+                      </span>
+                      {FLOOD_STATUSES.map((key) => (
+                        <span key={key} className={styles.cotasLegendItem}>
+                          <i style={{ background: FLOOD_STATUS_INFO[key].color }} />
+                          {FLOOD_STATUS_INFO[key].label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                   {showRiskLayer ? (
                     <div className={styles.cotasLegend} aria-label="Referencias de riesgo por crecida de ríos">
                       <span className={styles.cotasLegendTitle}>Riesgo por crecida, {mapLocality.sources.rio}</span>

@@ -156,6 +156,14 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 **Valor a futuro**
 - El historial de reportes arma un mapa de dónde se inunda de verdad y con qué frecuencia. Es un dato propio, construido por los vecinos, para reclamarle obras al Estado o para contrastar con los mapas oficiales de riesgo.
 
+**Implementación, primera versión** (en la rama `test`, pestaña Mapa, hecha el 01/11/2026)
+- Solo **puntos**, sin fotos. Cada vecino tiene **un solo punto vigente**: si reporta de nuevo, reemplaza al anterior. Por defecto se reporta "Donde estoy ahora" (GPS); si no, el punto marcado en el mapa (tocándolo o buscando una dirección).
+- Tres estados: **Sin agua** (verde), **Zona anegada** (naranja), **Intransitable** (rojo). Para anegada e intransitable se pide la causa: lluvia (se ve 12 h) o crecida del río (4 días). "Sin agua" se ve 12 h.
+- Todavía no hay "actualizar el reporte de otro": cada vecino corrige con su propio punto, y en el mapa manda el más cercano.
+- La capa continua es una **interpolación por vecino más cercano**: un diagrama de Voronoi recortado a 200 m alrededor de cada punto (más lejos no hay dato). Se calcula en el servidor (`src/lib/floods.ts`) y se guarda en caché hasta que cambian los reportes; 2000 puntos tardan unos 100 ms.
+- Los puntos se publican sin autor y redondeados a unos 10 m. El PTP ve el autor en `/ptpadmin/inundaciones` y puede borrar reportes falsos. Tabla `flood_reports`: los reemplazados y los sacados por su autor quedan como historial (`removed_at`). Al borrar sus datos, se borran los reportes del vecino.
+- Pendiente: tramos de calle y zonas, fotos, confirmaciones de otros vecinos, botón "Reportar como falso".
+
 **Puntos a definir más adelante**
 - Cuántas horas queda visible en verde un reporte marcado "Sin agua".
 - ¿Quién modera: el equipo del PTP, los delegados de cada barrio, o los dos?

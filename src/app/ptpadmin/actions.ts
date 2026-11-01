@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { deleteMessage, setMessageHidden } from "@/lib/admin";
 import { login, logout, requireAdmin } from "@/lib/adminAuth";
 import { ValidationError } from "@/lib/contact";
+import { deleteFloodReport } from "@/lib/floods";
 import { addPtpNews, deleteNews } from "@/lib/news";
 
 // Las Server Actions se pueden llamar con un POST directo, sin pasar por la página: por eso cada
@@ -80,6 +81,16 @@ export async function publishPtpNews(formData: FormData) {
 }
 
 // Borra cualquier novedad, del PTP o de un delegado.
+// ---------- Inundaciones reportadas por vecinos ----------
+
+export async function deleteFloodAdmin(formData: FormData) {
+  await requireAdmin();
+
+  const id = Number(formData.get("id"));
+  if (Number.isInteger(id) && id > 0) deleteFloodReport(id);
+  revalidatePath("/ptpadmin/inundaciones");
+}
+
 export async function deleteNewsAdmin(formData: FormData) {
   await requireAdmin();
 

@@ -60,6 +60,12 @@ export default function DatosInfo() {
           Las publicaciones de ayuda mutua también las ve el <strong>PTP Chaco</strong>, tal como las ven tus vecinos,
           para coordinar la ayuda entre barrios.
         </li>
+        <li>
+          Si reportás una inundación en el mapa, <strong>el punto que reportás lo ve cualquiera que use la app</strong>,
+          sin tu nombre. Si usás &quot;Donde estoy ahora&quot;, ese punto es tu ubicación en ese momento (si estás en tu
+          casa, es tu casa). El PTP Chaco ve quién hizo cada reporte, para poder borrar los falsos. Podés sacar tu
+          reporte cuando quieras.
+        </li>
       </ul>
 
       <h2>Delegados</h2>

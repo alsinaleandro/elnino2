@@ -157,6 +157,7 @@ export function deleteNeighbor(id: number) {
   db.prepare("DELETE FROM chat_messages WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM help_posts WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM news_posts WHERE neighbor_id = ?").run(id);
+  db.prepare("DELETE FROM flood_reports WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM sessions WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM neighbors WHERE id = ?").run(id);
 }

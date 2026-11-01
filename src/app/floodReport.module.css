@@ -1,0 +1,168 @@
+/* "Reportar inundación" en la pestaña Mapa (FloodReport.tsx). */
+
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.box h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.open,
+.send {
+  min-height: 48px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  line-height: 48px;
+  cursor: pointer;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.link {
+  align-self: center;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.group legend {
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.group label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 8px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.group label input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.group label small {
+  grid-column: 2;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.statuses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.status i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--status-color);
+}
+
+.status strong {
+  font-size: 0.9rem;
+}
+
+.status small {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.statusActive {
+  border-color: var(--status-color);
+  background: color-mix(in srgb, var(--status-color) 12%, #ffffff);
+}
+
+.mine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.mine span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mine i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
