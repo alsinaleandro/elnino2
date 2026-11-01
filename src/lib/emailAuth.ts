@@ -66,8 +66,12 @@ export function requirePassword(value: unknown) {
 
 // ---------- Links por e-mail ----------
 
+// Las cuentas de Facebook quedan afuera: su e-mail no está comprobado, y agregarles una contraseña
+// sería darle a otra persona una cuenta que puede abrir con su Facebook (ver neighbors.ts).
 const findByEmail = (email: string) =>
-  db.prepare("SELECT id FROM neighbors WHERE email = ? ORDER BY id LIMIT 1").get(email) as { id: number } | undefined;
+  db.prepare("SELECT id FROM neighbors WHERE email = ? AND facebook_id IS NULL ORDER BY id LIMIT 1").get(email) as
+    | { id: number }
+    | undefined;
 
 // "alta" se pide después de aceptar "Cómo usamos tus datos"; "clave", desde "¿Olvidaste tu
 // contraseña?". La respuesta es la misma haya o no una cuenta con ese e-mail, para no revelar quién

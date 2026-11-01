@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getBarrioSummary } from "@/lib/chat";
 import { listDelegates } from "@/lib/delegates";
 import { isEmailLoginConfigured } from "@/lib/emailAuth";
+import { isFacebookConfigured } from "@/lib/facebook";
 import { countHelpPosts } from "@/lib/help";
 import { newsSummary } from "@/lib/news";
 import { isGoogleConfigured } from "@/lib/google";
@@ -31,6 +32,11 @@ const ERRORS: Record<string, string> = {
   google: "No pudimos completar el ingreso con Google. Probá de nuevo.",
   aceptar: "Todavía no te sumaste. Leé cómo usamos tus datos y tocá \"Estoy de acuerdo\".",
   config: "El ingreso todavía no está configurado en este servidor.",
+  facebook: "No pudimos completar el ingreso con Facebook. Probá de nuevo.",
+  "facebook-email":
+    "Tu cuenta de Facebook no nos compartió un e-mail, y lo necesitamos para tu cuenta. Probá de nuevo aceptando compartirlo, o entrá con Google o con tu e-mail.",
+  "facebook-existe":
+    "Ya hay una cuenta con el e-mail de tu Facebook. Entrá con el método que usaste la primera vez: Google, o tu e-mail y contraseña.",
 };
 
 function GoogleIcon() {
@@ -54,6 +60,26 @@ function GoogleButton({ accept }: { accept: boolean }) {
   );
 }
 
+function FacebookIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#ffffff"
+        d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07"
+      />
+    </svg>
+  );
+}
+
+function FacebookButton({ accept }: { accept: boolean }) {
+  return (
+    <a className={styles.facebookBtn} href={accept ? "/api/auth/facebook?acepto=1" : "/api/auth/facebook"}>
+      <FacebookIcon />
+      Continuar con Facebook
+    </a>
+  );
+}
+
 export default async function OrganizatePage({ searchParams }: PageProps<"/organizate">) {
   const { paso, error, borrado } = await searchParams;
   const neighbor = await getCurrentNeighbor();
@@ -61,6 +87,8 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
 
   const emailLogin = isEmailLoginConfigured();
   const googleLogin = isGoogleConfigured();
+  const facebookLogin = isFacebookConfigured();
+  const socialLogin = googleLogin || facebookLogin;
 
   let content;
   if (!neighbor && paso === "ingreso") {
@@ -72,9 +100,10 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
           Usamos tu cuenta solo para identificarte. No publicamos nada en tu nombre.
         </p>
         {googleLogin ? <GoogleButton accept /> : null}
-        {googleLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
+        {facebookLogin ? <FacebookButton accept /> : null}
+        {socialLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
         {emailLogin ? <SignupForm /> : null}
-        {!googleLogin && !emailLogin ? <p className={styles.error}>{ERRORS.config}</p> : null}
+        {!socialLogin && !emailLogin ? <p className={styles.error}>{ERRORS.config}</p> : null}
         <p className={styles.muted}>
           ¿Ya tenés cuenta? <Link href="/organizate?paso=entrar">Entrá</Link>.
         </p>
@@ -84,12 +113,13 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
       </>
     );
   } else if (!neighbor && paso === "entrar") {
-    // Para quien ya se sumó: con Google o con e-mail y contraseña.
+    // Para quien ya se sumó: con Google, con Facebook o con e-mail y contraseña.
     content = (
       <>
         <h1>Entrá</h1>
         {googleLogin ? <GoogleButton accept={false} /> : null}
-        {googleLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
+        {facebookLogin ? <FacebookButton accept={false} /> : null}
+        {socialLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
         {emailLogin ? (
           <>
             <LoginForm />

@@ -17,8 +17,9 @@ export default function DatosInfo() {
       <ul>
         <li>Nombre y apellido</li>
         <li>
-          E-mail (entrás con tu cuenta de Google, o con tu e-mail y una contraseña que guardamos cifrada: nadie puede
-          leerla)
+          E-mail (entrás con tu cuenta de Google o de Facebook, o con tu e-mail y una contraseña que guardamos cifrada:
+          nadie puede leerla). De Google y Facebook solo tomamos tu nombre, tu apellido y tu e-mail: no publicamos nada
+          en tu nombre ni vemos tus contactos.
         </li>
         <li>WhatsApp</li>
         <li>Barrio (lo detectamos con tu ubicación, y podés corregirlo)</li>

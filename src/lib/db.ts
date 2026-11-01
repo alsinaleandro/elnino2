@@ -258,6 +258,9 @@ function applyMigrations(db: DatabaseSync) {
   addColumn(db, "neighbors", "longitude", "REAL");
   addColumn(db, "neighbors", "location_accuracy", "REAL");
   addColumn(db, "neighbors", "located_at", "TEXT");
+  // Ingreso con Facebook: id del usuario para esta app (NULL si nunca entró con Facebook).
+  addColumn(db, "neighbors", "facebook_id", "TEXT");
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS neighbors_facebook ON neighbors (facebook_id)");
   db.exec("CREATE INDEX IF NOT EXISTS neighbors_follows ON neighbors (follows_id)");
   db.exec("CREATE INDEX IF NOT EXISTS neighbors_email ON neighbors (email)");
 }

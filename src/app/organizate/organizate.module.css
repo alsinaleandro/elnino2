@@ -489,3 +489,27 @@
   flex: 1;
   border-top: 1px solid #e5e7eb;
 }
+
+/* Botón de Facebook: mismo tamaño que el de Google, con el azul de Facebook. */
+.facebookBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 12px 22px;
+  border: none;
+  border-radius: 999px;
+  background: #1877f2;
+  color: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.facebookBtn:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}

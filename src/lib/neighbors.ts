@@ -64,10 +64,13 @@ export function findNeighborByGoogle(sub: string) {
 
 // Quien creó su cuenta con e-mail y contraseña y después entra con Google con el mismo e-mail sigue
 // siendo el mismo vecino. Es seguro porque las cuentas con e-mail se crean desde un link mandado a
-// ese e-mail (emailAuth.ts) y Google solo manda e-mails verificados.
+// ese e-mail (emailAuth.ts) y Google solo manda e-mails verificados. Las cuentas de Facebook quedan
+// afuera: Facebook no garantiza que el e-mail sea de esa persona.
 export function linkGoogleByEmail(sub: string, email: string) {
   const row = db
-    .prepare("SELECT id FROM neighbors WHERE email = ? AND google_sub IS NULL ORDER BY id LIMIT 1")
+    .prepare(
+      "SELECT id FROM neighbors WHERE email = ? AND google_sub IS NULL AND facebook_id IS NULL ORDER BY id LIMIT 1",
+    )
     .get(email) as { id: number } | undefined;
   if (!row) return null;
   db.prepare("UPDATE neighbors SET google_sub = ?, updated_at = ? WHERE id = ?").run(sub, new Date().toISOString(), row.id);
@@ -84,6 +87,31 @@ export function createNeighbor(input: { sub: string; email: string; firstName: s
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(input.sub, input.email, input.firstName, input.lastName, now, now, now);
+  return Number(result.lastInsertRowid);
+}
+
+// ---------- Facebook ----------
+// Facebook no dice si el e-mail está verificado. Por eso una cuenta de Facebook nunca se une con
+// otra por e-mail (en ninguno de los dos sentidos): si el e-mail ya está en otra cuenta, el ingreso
+// con Facebook se rechaza y la persona entra con el método que usó primero.
+
+export function findNeighborByFacebook(id: string) {
+  const row = db.prepare("SELECT id FROM neighbors WHERE facebook_id = ?").get(id) as { id: number } | undefined;
+  return row?.id ?? null;
+}
+
+export function isEmailInUse(email: string) {
+  return Boolean(db.prepare("SELECT 1 FROM neighbors WHERE email = ? LIMIT 1").get(email));
+}
+
+export function createFacebookNeighbor(input: { id: string; email: string; firstName: string; lastName: string }) {
+  const now = new Date().toISOString();
+  const result = db
+    .prepare(
+      `INSERT INTO neighbors (facebook_id, email, first_name, last_name, created_at, updated_at, consent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(input.id, input.email, input.firstName, input.lastName, now, now, now);
   return Number(result.lastInsertRowid);
 }
 
