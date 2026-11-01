@@ -51,6 +51,7 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 - Se muestra una sola vez, antes del registro. Conviene que después se pueda volver a leer desde la sección del barrio ("Cómo usamos tus datos").
 - Pendiente: completar el e-mail de contacto.
 - No se pide ni se guarda el domicilio: alcanza con el barrio (decidido el 27/10/2026).
+- Sí se guarda la **ubicación GPS** del vecino en el momento en que elige su barrio por primera vez, si da permiso (decidido el 01/11/2026). Columnas `latitude`, `longitude`, `location_accuracy` y `located_at` de `neighbors`; no se reemplaza al cambiar de barrio y no se muestra en ninguna pantalla. "Cómo usamos tus datos" lo explica (si elige el barrio desde su casa, ese punto es su casa).
 - Texto (borrador acordado el 24/10/2026):
 
 > # Sumate al comité de emergencia de tu barrio

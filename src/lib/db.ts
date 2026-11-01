@@ -9,16 +9,33 @@ const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "e
 function open() {
   mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new DatabaseSync(DB_PATH);
+  // busy_timeout va primero: si otro proceso está escribiendo (por ejemplo, migrando durante el
+  // build), las órdenes siguientes esperan hasta 10 s en lugar de fallar con "database is locked".
   db.exec(`
+    PRAGMA busy_timeout = 10000;
     PRAGMA journal_mode = WAL;
-    PRAGMA busy_timeout = 5000;
   `);
   return db;
 }
 
 // Crea las tablas que falten y agrega las columnas nuevas a las que ya existían. Es idempotente y
 // corre cada vez que se carga el módulo, así también se aplica en desarrollo sin reiniciar.
+//
+// Va entera en una transacción BEGIN IMMEDIATE: el build de Next carga este módulo en varios
+// procesos a la vez (y en el VPS además está la app corriendo), y así cada uno espera su turno
+// (busy_timeout) en lugar de chocar con "database is locked". Si algo falla, no queda nada a medias.
 function migrate(db: DatabaseSync) {
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    applyMigrations(db);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+function applyMigrations(db: DatabaseSync) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS counters (
       name  TEXT PRIMARY KEY,
@@ -235,13 +252,19 @@ function migrate(db: DatabaseSync) {
   // Ingreso con e-mail y contraseña: hash scrypt de la contraseña (NULL si solo entra con Google).
   addColumn(db, "neighbors", "password_hash", "TEXT");
   allowNeighborsWithoutGoogle(db);
+  // Ubicación GPS del vecino cuando eligió su barrio por primera vez (NULL si no dio permiso). No
+  // se publica ni la ve ningún vecino. Van después de rehacer la tabla, que no las conoce.
+  addColumn(db, "neighbors", "latitude", "REAL");
+  addColumn(db, "neighbors", "longitude", "REAL");
+  addColumn(db, "neighbors", "location_accuracy", "REAL");
+  addColumn(db, "neighbors", "located_at", "TEXT");
   db.exec("CREATE INDEX IF NOT EXISTS neighbors_follows ON neighbors (follows_id)");
   db.exec("CREATE INDEX IF NOT EXISTS neighbors_email ON neighbors (email)");
 }
 
 // Las bases creadas antes del ingreso con e-mail tienen "google_sub" NOT NULL. SQLite no deja
-// cambiar una columna, así que se rehace la tabla una sola vez, copiando todo en una transacción:
-// si algo falla, queda como estaba.
+// cambiar una columna, así que se rehace la tabla una sola vez, copiando todo. Corre dentro de la
+// transacción de migrate(): si algo falla, queda como estaba.
 function allowNeighborsWithoutGoogle(db: DatabaseSync) {
   const columns = db.prepare("PRAGMA table_info(neighbors)").all() as Array<{ name: string; notnull: number }>;
   if (columns.find((column) => column.name === "google_sub")?.notnull !== 1) return;
@@ -251,35 +274,28 @@ function allowNeighborsWithoutGoogle(db: DatabaseSync) {
   const sequence = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'neighbors'").get() as
     | { seq: number }
     | undefined;
-  db.exec("BEGIN");
-  try {
-    db.exec(`
-      CREATE TABLE neighbors_new (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        google_sub     TEXT UNIQUE,
-        email          TEXT NOT NULL,
-        first_name     TEXT NOT NULL,
-        last_name      TEXT NOT NULL,
-        whatsapp       TEXT,
-        created_at     TEXT NOT NULL,
-        updated_at     TEXT NOT NULL,
-        consent_at     TEXT NOT NULL,
-        barrio_id      INTEGER,
-        delegate_since TEXT,
-        follows_id     INTEGER,
-        password_hash  TEXT
-      );
-      INSERT INTO neighbors_new (${names}) SELECT ${names} FROM neighbors;
-      DROP TABLE neighbors;
-      ALTER TABLE neighbors_new RENAME TO neighbors;
-    `);
-    if (sequence) {
-      db.prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'neighbors'").run(sequence.seq);
-    }
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
+  db.exec(`
+    CREATE TABLE neighbors_new (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      google_sub     TEXT UNIQUE,
+      email          TEXT NOT NULL,
+      first_name     TEXT NOT NULL,
+      last_name      TEXT NOT NULL,
+      whatsapp       TEXT,
+      created_at     TEXT NOT NULL,
+      updated_at     TEXT NOT NULL,
+      consent_at     TEXT NOT NULL,
+      barrio_id      INTEGER,
+      delegate_since TEXT,
+      follows_id     INTEGER,
+      password_hash  TEXT
+    );
+    INSERT INTO neighbors_new (${names}) SELECT ${names} FROM neighbors;
+    DROP TABLE neighbors;
+    ALTER TABLE neighbors_new RENAME TO neighbors;
+  `);
+  if (sequence) {
+    db.prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'neighbors'").run(sequence.seq);
   }
 }
 

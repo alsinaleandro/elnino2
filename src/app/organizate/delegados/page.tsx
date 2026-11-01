@@ -60,6 +60,10 @@ export default async function DelegadosPage({ searchParams }: PageProps<"/organi
               </strong>{" "}
               para los vecinos de {neighbor.barrio.name}, y los conoce el PTP Chaco para coordinar entre barrios.
             </p>
+            <p>
+              El PTP Chaco también te ve en su <strong>mapa de delegados</strong>, con la ubicación que guardamos cuando
+              elegiste tu barrio (o el centro del barrio, si no la compartiste). Los vecinos no ven ese mapa.
+            </p>
             <p className={styles.muted}>
               Sos delegado/a desde que te postulás, aunque todavía nadie te siga. Podés renunciar cuando quieras: tus
               datos dejan de ser públicos.

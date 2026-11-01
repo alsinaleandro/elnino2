@@ -22,10 +22,20 @@ export default function DatosInfo() {
         </li>
         <li>WhatsApp</li>
         <li>Barrio (lo detectamos con tu ubicación, y podés corregirlo)</li>
+        <li>
+          Tu <strong>ubicación GPS</strong> en el momento en que elegís tu barrio por primera vez, si das permiso para
+          usarla. Si elegís el barrio desde tu casa, ese punto es tu casa. Si preferís no darla, podés escribir tu barrio
+          a mano.
+        </li>
       </ul>
       <p>
-        Los usamos solo para armar la comunidad de tu barrio y para contactarte por temas del comité. No los vendemos ni
-        los compartimos con nadie, tampoco con el gobierno.
+        Los usamos solo para armar la comunidad de tu barrio, para contactarte por temas del comité y para saber dónde
+        están los vecinos organizados si hay que coordinar ayuda en una emergencia. No los vendemos ni los compartimos con
+        nadie, tampoco con el gobierno.
+      </p>
+      <p>
+        Para encontrar tu barrio, tu ubicación se consulta también en el mapa de barrios de OpenStreetMap, sin tu nombre
+        ni ningún otro dato tuyo.
       </p>
 
       <h2>¿Qué ven los demás vecinos?</h2>
@@ -34,7 +44,8 @@ export default function DatosInfo() {
           En el chat de tu barrio se ve tu <strong>nombre y la inicial de tu apellido</strong>.
         </li>
         <li>
-          Tu teléfono y tu e-mail <strong>no los ve ningún otro vecino</strong>.
+          Tu teléfono, tu e-mail y tu ubicación <strong>no los ve ningún otro vecino</strong>. Tu ubicación queda
+          guardada junto a tus datos y no aparece en ninguna pantalla, salvo si sos delegado (ver abajo).
         </li>
         <li>
           A qué delegado seguís <strong>no lo ve ningún vecino ni delegado</strong>.
@@ -55,7 +66,9 @@ export default function DatosInfo() {
         Cualquier vecino puede postularse como delegado de su barrio, y cada vecino elige libremente a un delegado para
         seguir. Si te postulás como delegado,{" "}
         <strong>tu nombre y tu WhatsApp se publican para los vecinos de tu barrio</strong>, y los conoce el PTP Chaco para
-        coordinar entre barrios.
+        coordinar entre barrios. El PTP Chaco también ve a los delegados en un <strong>mapa</strong>, con su nombre,
+        barrio, WhatsApp, cantidad de seguidores y la ubicación que guardamos cuando eligieron su barrio (o el centro del
+        barrio, si no la compartieron). Los vecinos no ven ese mapa.
       </p>
 
       <h2>Novedades</h2>

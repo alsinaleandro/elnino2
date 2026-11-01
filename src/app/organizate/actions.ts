@@ -11,6 +11,7 @@ import {
   endSession,
   getCurrentNeighbor,
   parseProfile,
+  saveFirstLocation,
   startSession,
   updateProfile,
   ValidationError,
@@ -43,6 +44,14 @@ const toPoint = (lat: unknown, lon: unknown) => {
   return { lat: latitude, lon: longitude };
 };
 
+// Precisión del GPS en metros, como la informa el celular.
+const toAccuracy = (value: unknown) => {
+  const accuracy = Number(value);
+  return value !== "" && value !== null && Number.isFinite(accuracy) && accuracy >= 0 && accuracy < 100_000
+    ? accuracy
+    : null;
+};
+
 // Solo para vecinos con sesión: así nadie usa la app para consultar OpenStreetMap de arriba.
 export async function detectMyBarrio(lat: number, lon: number): Promise<Detection | null> {
   const neighbor = await getCurrentNeighbor();
@@ -67,6 +76,8 @@ export async function saveBarrio(_state: BarrioState, formData: FormData): Promi
         : getBarrio(Number(choice));
     if (!barrio) return { error: "Elegí tu barrio de la lista o escribilo." };
     setNeighborBarrio(neighbor.id, barrio, point);
+    // La primera vez que elige su barrio se guarda también su ubicación GPS de ese momento.
+    if (!neighbor.barrio && point) saveFirstLocation(neighbor.id, point, toAccuracy(formData.get("accuracy")));
   } catch (error) {
     if (error instanceof ValidationError) return { error: error.message };
     throw error;

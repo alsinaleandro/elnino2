@@ -5,7 +5,7 @@ import type { Detection } from "@/lib/barrios";
 import { detectMyBarrio, saveBarrio } from "./actions";
 import styles from "./organizate.module.css";
 
-type Point = { lat: number; lon: number };
+type Point = { lat: number; lon: number; accuracy: number | null };
 
 // Elegir el barrio: con el GPS la app propone uno (y los cercanos ya cargados); el vecino confirma,
 // elige otro o lo escribe. Sin GPS, lo escribe directamente.
@@ -27,7 +27,7 @@ export default function BarrioForm({ current }: { current: { name: string; local
     setGpsError(null);
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
-        const found = { lat: coords.latitude, lon: coords.longitude };
+        const found = { lat: coords.latitude, lon: coords.longitude, accuracy: coords.accuracy ?? null };
         setPoint(found);
         try {
           const result = await detectMyBarrio(found.lat, found.lon);
@@ -53,7 +53,11 @@ export default function BarrioForm({ current }: { current: { name: string; local
           Con tu ubicación te proponemos tu barrio. Tiene que ser <strong>el barrio donde vivís</strong>, no donde estás
           ahora: si no estás en tu casa, después lo corregís.
         </p>
-        <p className={styles.muted}>Tu ubicación no se publica ni la ve ningún vecino.</p>
+        <p className={styles.muted}>
+          {current
+            ? "Tu ubicación no se publica ni la ve ningún vecino."
+            : "Guardamos tu ubicación de este momento junto a tus datos. No se publica ni la ve ningún vecino."}
+        </p>
         <button type="button" className={styles.btnPrimary} onClick={detect} disabled={phase === "buscando"}>
           {phase === "buscando" ? "Buscando tu barrio…" : "📍 Detectar mi barrio"}
         </button>
@@ -72,6 +76,7 @@ export default function BarrioForm({ current }: { current: { name: string; local
     <form action={action} className={styles.form}>
       <input type="hidden" name="lat" value={point?.lat ?? ""} />
       <input type="hidden" name="lon" value={point?.lon ?? ""} />
+      <input type="hidden" name="accuracy" value={point?.accuracy ?? ""} />
 
       {gpsError ? <p className={styles.error}>{gpsError}</p> : null}
       {detected ? (

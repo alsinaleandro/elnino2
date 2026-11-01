@@ -6,6 +6,7 @@ const ITEMS = [
   { key: "mensajes", label: "Mensajes", href: "/ptpadmin/mensajes" },
   { key: "novedades", label: "Novedades", href: "/ptpadmin/novedades" },
   { key: "ayuda", label: "Ayuda mutua", href: "/ptpadmin/ayuda" },
+  { key: "delegados", label: "Delegados", href: "/ptpadmin/delegados" },
   { key: "estadisticas", label: "Estadísticas", href: "/ptpadmin/estadisticas" },
 ] as const;
 

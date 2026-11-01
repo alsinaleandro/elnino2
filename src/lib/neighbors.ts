@@ -110,6 +110,16 @@ export function updateProfile(id: number, profile: ReturnType<typeof parseProfil
   );
 }
 
+// Ubicación GPS del vecino en el momento en que eligió su barrio por primera vez (si dio permiso).
+// Se guarda una sola vez: al cambiar de barrio más adelante no se reemplaza. No se publica ni la ve
+// ningún vecino.
+export function saveFirstLocation(id: number, point: { lat: number; lon: number }, accuracy: number | null) {
+  db.prepare(
+    `UPDATE neighbors SET latitude = ?, longitude = ?, location_accuracy = ?, located_at = ?
+      WHERE id = ? AND latitude IS NULL`,
+  ).run(point.lat, point.lon, accuracy, new Date().toISOString(), id);
+}
+
 // "Borrar mis datos" (Ley 25.326): se borra el vecino, sus sesiones, sus mensajes del chat del
 // barrio, sus publicaciones de ayuda mutua y sus novedades, no queda copia. Si era delegado, quienes
 // lo seguían quedan sin delegado.
