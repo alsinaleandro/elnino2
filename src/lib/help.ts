@@ -61,19 +61,66 @@ export function listHelpPosts(barrioId: number, viewerId: number, kind?: HelpKin
     )
     .all(barrioId, visibleSince(), kind ?? null, kind ?? null) as Row[];
 
-  return rows.map((row) => ({
-    id: row.id,
-    kind: row.kind,
-    author: `${row.first_name} ${row.last_name[0] ?? ""}.`,
-    authorIsDelegate: row.delegate_since !== null,
-    message: row.message,
-    createdAt: row.created_at,
-    mine: row.neighbor_id === viewerId,
-    contact:
-      row.kind === "necesito" && row.allow_contact === 1
-        ? { whatsapp: row.whatsapp, whatsappLink: whatsappLink(row.whatsapp), phoneLink: phoneLink(row.whatsapp) }
-        : null,
-  }));
+  return rows.map((row) => toPost(row, viewerId));
+}
+
+// Lo que ve cualquier vecino del barrio: nombre e inicial del apellido, y el WhatsApp solo si quien
+// pide ayuda lo permitió en esa publicación.
+const toPost = (row: Row, viewerId: number | null): HelpPost => ({
+  id: row.id,
+  kind: row.kind,
+  author: `${row.first_name} ${row.last_name[0] ?? ""}.`,
+  authorIsDelegate: row.delegate_since !== null,
+  message: row.message,
+  createdAt: row.created_at,
+  mine: viewerId !== null && row.neighbor_id === viewerId,
+  contact:
+    row.kind === "necesito" && row.allow_contact === 1
+      ? { whatsapp: row.whatsapp, whatsappLink: whatsappLink(row.whatsapp), phoneLink: phoneLink(row.whatsapp) }
+      : null,
+});
+
+// ---------- Panel del PTP ----------
+
+export type BarrioHelp = {
+  barrioId: number;
+  barrio: string;
+  localidad: string | null;
+  necesito: number;
+  ofrezco: number;
+  posts: HelpPost[];
+};
+
+// Publicaciones vigentes de todos los barrios, agrupadas por barrio (primero los que más piden
+// ayuda). El PTP ve lo mismo que ve cualquier vecino de cada barrio, nada más.
+export function listHelpByBarrio(kind?: HelpKind): BarrioHelp[] {
+  const rows = db
+    .prepare(
+      `SELECT p.id, p.kind, p.message, p.created_at, p.allow_contact, p.neighbor_id, p.barrio_id,
+              n.first_name, n.last_name, n.whatsapp, n.delegate_since,
+              b.name AS barrio_name, b.localidad
+         FROM help_posts p
+         JOIN neighbors n ON n.id = p.neighbor_id
+         JOIN barrios b ON b.id = p.barrio_id
+        WHERE p.resolved_at IS NULL AND p.created_at > ?
+        ORDER BY p.id DESC`,
+    )
+    .all(visibleSince()) as Array<Row & { barrio_id: number; barrio_name: string; localidad: string | null }>;
+
+  const barrios = new Map<number, BarrioHelp>();
+  for (const row of rows) {
+    let barrio = barrios.get(row.barrio_id);
+    if (!barrio) {
+      barrio = { barrioId: row.barrio_id, barrio: row.barrio_name, localidad: row.localidad, necesito: 0, ofrezco: 0, posts: [] };
+      barrios.set(row.barrio_id, barrio);
+    }
+    barrio[row.kind] += 1;
+    if (!kind || row.kind === kind) barrio.posts.push(toPost(row, null));
+  }
+
+  return [...barrios.values()].sort(
+    (a, b) => b.necesito - a.necesito || b.ofrezco - a.ofrezco || a.barrio.localeCompare(b.barrio, "es"),
+  );
 }
 
 // Para el menú de Mi barrio.

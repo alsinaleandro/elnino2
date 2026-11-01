@@ -222,32 +222,38 @@
   cursor: pointer;
 }
 
+/* En el celular las pestañas no entran todas: se deslizan de costado. */
 .sections {
   flex: 1;
+  min-width: 0;
   display: flex;
   gap: 4px;
   padding: 4px;
   border-radius: 12px;
   background: #f3f4f6;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.sections::-webkit-scrollbar {
+  display: none;
 }
 
 .section {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 6px;
+  flex: 0 0 auto;
+  padding: 8px 10px;
   border-radius: 9px;
   color: #374151;
   font-size: 0.88rem;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-@media (min-width: 600px) {
+@media (min-width: 640px) {
   .section {
+    flex: 1;
     padding: 8px 12px;
     font-size: 0.92rem;
   }
@@ -335,4 +341,103 @@
   font: inherit;
   font-size: 1rem;
   font-weight: 400;
+}
+
+/* ---------- Ayuda mutua ---------- */
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.stats > div {
+  flex: 1 1 6rem;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.stats span {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.stats strong {
+  font-size: 1.8rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th,
+.table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: right;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+}
+
+.table th {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.table a {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.table small,
+.listTitle small {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.barrioSection {
+  margin-top: 22px;
+  scroll-margin-top: 16px;
+}
+
+.badgeNecesito,
+.badgeOfrezco {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badgeNecesito {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badgeOfrezco {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.contact {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.contact a {
+  color: #15803d;
+  font-weight: 700;
 }

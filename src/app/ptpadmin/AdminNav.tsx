@@ -2,14 +2,17 @@ import Link from "next/link";
 import { adminLogout } from "./actions";
 import styles from "./admin.module.css";
 
-// Secciones del panel de administración y el botón para cerrar la sesión.
-// Nombres cortos para que las tres pestañas y "Salir" entren en el ancho de un celular.
-export default function AdminNav({ active }: { active: "mensajes" | "novedades" | "estadisticas" }) {
-  const items = [
-    { key: "mensajes", label: "Mensajes", href: "/ptpadmin/mensajes" },
-    { key: "novedades", label: "Novedades", href: "/ptpadmin/novedades" },
-    { key: "estadisticas", label: "Estadísticas", href: "/ptpadmin/estadisticas" },
-  ] as const;
+const ITEMS = [
+  { key: "mensajes", label: "Mensajes", href: "/ptpadmin/mensajes" },
+  { key: "novedades", label: "Novedades", href: "/ptpadmin/novedades" },
+  { key: "ayuda", label: "Ayuda mutua", href: "/ptpadmin/ayuda" },
+  { key: "estadisticas", label: "Estadísticas", href: "/ptpadmin/estadisticas" },
+] as const;
+
+// Secciones del panel de administración y el botón para cerrar la sesión. En el celular las
+// pestañas se deslizan de costado si no entran.
+export default function AdminNav({ active }: { active: (typeof ITEMS)[number]["key"] }) {
+  const items = ITEMS;
 
   return (
     <div className={styles.topBar}>

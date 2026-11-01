@@ -44,6 +44,10 @@ export default function DatosInfo() {
           En ayuda mutua, si pedís ayuda y elegís que te contacten directo, <strong>tu WhatsApp se muestra en esa
           publicación</strong> para los vecinos de tu barrio.
         </li>
+        <li>
+          Las publicaciones de ayuda mutua también las ve el <strong>PTP Chaco</strong>, tal como las ven tus vecinos,
+          para coordinar la ayuda entre barrios.
+        </li>
       </ul>
 
       <h2>Delegados</h2>
