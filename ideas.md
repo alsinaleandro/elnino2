@@ -291,7 +291,7 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 
 **Implementación** (en la rama `test`, hecha el 01/11/2026)
 - Vecinos: Mi barrio → Novedades (`/organizate/novedades`). Los delegados ven "＋ Publicar una novedad", solo para su barrio.
-- PTP Chaco: panel de administración, `/admin/<token>/novedades`. Publica para **todos los barrios** o para uno; ve todas las novedades, también las de los delegados, y puede borrar cualquiera.
+- PTP Chaco: panel de administración, `/ptpadmin/novedades` (se entra por `/ptpadmin` con la contraseña `ADMIN_PASSWORD`). Publica para **todos los barrios** o para uno; ve todas las novedades, también las de los delegados, y puede borrar cualquiera.
 - Cada novedad: título, texto y, si es una reunión o asamblea, fecha, hora y lugar (opcionales). Las reuniones pasadas se marcan "ya pasó".
 - Etiqueta "PTP Chaco" o "Delegado/a · nombre". La página aclara que no son comunicados oficiales.
 - Tabla `news_posts`, lógica en `src/lib/news.ts`. Hasta 5 novedades por día por delegado; insultos tapados.

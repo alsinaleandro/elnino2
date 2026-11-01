@@ -13,7 +13,7 @@ import NewsForm from "./NewsForm";
 
 export const metadata: Metadata = { title: "Novedades · ¡Organizate!" };
 
-// Novedades del barrio: las publica el PTP Chaco (desde /admin) y los delegados del barrio, por
+// Novedades del barrio: las publica el PTP Chaco (desde /ptpadmin) y los delegados del barrio, por
 // ejemplo para anunciar reuniones o asambleas. ?publicar=1 muestra el formulario (solo delegados).
 export default async function NovedadesPage({ searchParams }: PageProps<"/organizate/novedades">) {
   const { publicar } = await searchParams;

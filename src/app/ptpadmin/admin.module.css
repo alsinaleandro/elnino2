@@ -199,10 +199,33 @@
 
 /* ---------- Secciones del panel y novedades ---------- */
 
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.topBar form {
+  flex-shrink: 0;
+}
+
+.logout {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .sections {
+  flex: 1;
   display: flex;
   gap: 4px;
-  margin-bottom: 18px;
   padding: 4px;
   border-radius: 12px;
   background: #f3f4f6;
@@ -283,4 +306,22 @@
 .formSuccess {
   background: #dcfce7;
   color: #166534;
+}
+
+/* ---------- Ingreso ---------- */
+
+.loginPage {
+  max-width: 26rem;
+  padding-top: 15vh;
+}
+
+.input {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
 }

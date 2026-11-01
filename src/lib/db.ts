@@ -183,7 +183,7 @@ function migrate(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS help_posts_barrio ON help_posts (barrio_id, created_at);
     CREATE INDEX IF NOT EXISTS help_posts_neighbor ON help_posts (neighbor_id);
 
-    -- Novedades de cada barrio. Las publica el PTP Chaco (desde /admin; "barrio_id" NULL = para
+    -- Novedades de cada barrio. Las publica el PTP Chaco (desde /ptpadmin; "barrio_id" NULL = para
     -- todos los barrios) o un delegado para su propio barrio ("neighbor_id"). Pueden anunciar una
     -- reunión o asamblea: "event_at" es la fecha (AAAA-MM-DD), o fecha y hora de Argentina
     -- (AAAA-MM-DDTHH:MM), y "place" el

@@ -2,15 +2,39 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { deleteMessage, isAdminToken, setMessageHidden } from "@/lib/admin";
+import { deleteMessage, setMessageHidden } from "@/lib/admin";
+import { login, logout, requireAdmin } from "@/lib/adminAuth";
 import { ValidationError } from "@/lib/contact";
 import { addPtpNews, deleteNews } from "@/lib/news";
 
 // Las Server Actions se pueden llamar con un POST directo, sin pasar por la página: por eso cada
-// pedido vuelve a comprobar el token.
+// una vuelve a comprobar la sesión del panel.
+
+// ---------- Ingreso ----------
+
+export type LoginState = { error: string | null };
+
+const LOGIN_ERRORS = {
+  wrong: "La contraseña no es correcta.",
+  blocked: "Demasiados intentos fallidos. Probá de nuevo en 15 minutos.",
+  disabled: "El panel no está configurado en este servidor (falta ADMIN_PASSWORD).",
+};
+
+export async function adminLogin(_state: LoginState, formData: FormData): Promise<LoginState> {
+  const result = await login(formData.get("password"));
+  if (result !== "ok") return { error: LOGIN_ERRORS[result] };
+  redirect("/ptpadmin/mensajes");
+}
+
+export async function adminLogout() {
+  await logout();
+  redirect("/ptpadmin");
+}
+
+// ---------- Mensajes públicos ----------
+
 export async function moderateMessage(formData: FormData) {
-  const token = formData.get("token");
-  if (!isAdminToken(token)) throw new Error("No autorizado.");
+  await requireAdmin();
 
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id <= 0) return;
@@ -29,15 +53,14 @@ export async function moderateMessage(formData: FormData) {
       return;
   }
 
-  revalidatePath(`/admin/${token}`);
+  revalidatePath("/ptpadmin/mensajes");
 }
 
 // ---------- Novedades del PTP Chaco ----------
 
 // "barrio" = id del barrio, o "todos" para que la vean todos los barrios.
 export async function publishPtpNews(formData: FormData) {
-  const token = formData.get("token");
-  if (!isAdminToken(token)) throw new Error("No autorizado.");
+  await requireAdmin();
 
   const barrio = formData.get("barrio");
   let error: string | null = null;
@@ -53,15 +76,14 @@ export async function publishPtpNews(formData: FormData) {
     if (!(reason instanceof ValidationError)) throw reason;
     error = reason.message;
   }
-  redirect(`/admin/${token}/novedades${error ? `?error=${encodeURIComponent(error)}` : "?publicada=1"}`);
+  redirect(`/ptpadmin/novedades${error ? `?error=${encodeURIComponent(error)}` : "?publicada=1"}`);
 }
 
 // Borra cualquier novedad, del PTP o de un delegado.
 export async function deleteNewsAdmin(formData: FormData) {
-  const token = formData.get("token");
-  if (!isAdminToken(token)) throw new Error("No autorizado.");
+  await requireAdmin();
 
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) deleteNews(id);
-  revalidatePath(`/admin/${token}/novedades`);
+  revalidatePath("/ptpadmin/novedades");
 }

@@ -1,20 +1,7 @@
-// Administración de los mensajes públicos. Se entra por /admin/<ADMIN_TOKEN>: el token se define en
-// la variable de entorno ADMIN_TOKEN (en el VPS, en .env.local). Sin esa variable la administración
-// queda desactivada y cualquier /admin/... responde 404.
-import { createHash, timingSafeEqual } from "node:crypto";
+// Administración de los mensajes públicos (panel /ptpadmin/mensajes). El ingreso al panel está en
+// adminAuth.ts.
 import { db } from "./db";
 import type { Topic } from "./contact";
-
-const MIN_TOKEN_LENGTH = 24;
-
-const digest = (value: string) => createHash("sha256").update(value).digest();
-
-export function isAdminToken(token: unknown) {
-  const expected = process.env.ADMIN_TOKEN;
-  if (!expected || expected.length < MIN_TOKEN_LENGTH || typeof token !== "string") return false;
-  // Se comparan los hashes para que el tiempo de respuesta no revele cuántos caracteres coinciden.
-  return timingSafeEqual(digest(token), digest(expected));
-}
 
 export type Filter = "todos" | "visibles" | "ocultos";
 

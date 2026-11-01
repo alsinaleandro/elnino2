@@ -1,22 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { countMessages, isAdminToken, listAdminMessages, type Filter } from "@/lib/admin";
+import { countMessages, listAdminMessages, type Filter } from "@/lib/admin";
+import { requireAdmin } from "@/lib/adminAuth";
 import { mapLink, whatsappLink } from "@/lib/links";
-import { moderateMessage } from "./actions";
-import AdminNav from "./AdminNav";
 import ConfirmButton from "../../ConfirmButton";
-import styles from "./admin.module.css";
+import { moderateMessage } from "../actions";
+import AdminNav from "../AdminNav";
+import styles from "../admin.module.css";
 
-// Administración de los mensajes públicos de la pestaña Contactanos. Solo se entra con la URL que
-// lleva el token (ver src/lib/admin.ts); con cualquier otra responde 404.
-export const metadata: Metadata = {
-  title: "Administración de mensajes",
-  robots: { index: false, follow: false },
-  // Que los enlaces externos (mapa, WhatsApp) no reciban la URL con el token.
-  referrer: "no-referrer",
-};
+// Administración de los mensajes públicos de la pestaña Contactanos (necesita la sesión del panel).
+export const metadata: Metadata = { title: "Mensajes públicos · Administración" };
 
 const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: "todos", label: "Todos" },
@@ -34,10 +27,8 @@ const formatDate = (iso: string) =>
     minute: "2-digit",
   });
 
-export default async function AdminPage({ params, searchParams }: PageProps<"/admin/[token]">) {
-  await connection();
-  const { token } = await params;
-  if (!isAdminToken(token)) notFound();
+export default async function AdminMessagesPage({ searchParams }: PageProps<"/ptpadmin/mensajes">) {
+  await requireAdmin();
 
   const { filtro } = await searchParams;
   const filter: Filter = FILTERS.some((item) => item.key === filtro) ? (filtro as Filter) : "todos";
@@ -46,20 +37,17 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
 
   return (
     <main className={styles.page}>
-      <AdminNav token={token} active="mensajes" />
+      <AdminNav active="mensajes" />
       <header className={styles.header}>
         <h1>Mensajes públicos</h1>
-        <p>
-          Ocultar saca el mensaje de la app pero lo conserva; eliminar lo borra para siempre. Esta página no se comparte:
-          quien tenga la URL puede moderar.
-        </p>
+        <p>Ocultar saca el mensaje de la app pero lo conserva; eliminar lo borra para siempre.</p>
       </header>
 
       <nav className={styles.filters} aria-label="Filtrar mensajes">
         {FILTERS.map((item) => (
           <Link
             key={item.key}
-            href={`/admin/${token}?filtro=${item.key}`}
+            href={`/ptpadmin/mensajes?filtro=${item.key}`}
             className={`${styles.filter} ${filter === item.key ? styles.filterActive : ""}`}
             aria-current={filter === item.key ? "page" : undefined}
           >
@@ -133,7 +121,6 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
               </dl>
 
               <form action={moderateMessage} className={styles.actions}>
-                <input type="hidden" name="token" value={token} />
                 <input type="hidden" name="id" value={item.id} />
                 {item.hidden ? (
                   <button type="submit" name="op" value="mostrar" className={styles.button}>

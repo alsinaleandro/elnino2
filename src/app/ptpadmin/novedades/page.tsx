@@ -1,27 +1,19 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { isAdminToken } from "@/lib/admin";
+import { requireAdmin } from "@/lib/adminAuth";
 import { listAllNews, listBarriosWithMembers } from "@/lib/news";
-import ConfirmButton from "../../../ConfirmButton";
-import NewsCard from "../../../NewsCard";
-import NewsFields from "../../../NewsFields";
+import ConfirmButton from "../../ConfirmButton";
+import NewsCard from "../../NewsCard";
+import NewsFields from "../../NewsFields";
 import { deleteNewsAdmin, publishPtpNews } from "../actions";
 import AdminNav from "../AdminNav";
 import styles from "../admin.module.css";
 
 // Novedades del PTP Chaco: se publican para todos los barrios o para uno. También se ven (y se
 // pueden borrar) las que publican los delegados en sus barrios.
-export const metadata: Metadata = {
-  title: "Novedades · Administración",
-  robots: { index: false, follow: false },
-  referrer: "no-referrer",
-};
+export const metadata: Metadata = { title: "Novedades · Administración" };
 
-export default async function AdminNewsPage({ params, searchParams }: PageProps<"/admin/[token]/novedades">) {
-  await connection();
-  const { token } = await params;
-  if (!isAdminToken(token)) notFound();
+export default async function AdminNewsPage({ searchParams }: PageProps<"/ptpadmin/novedades">) {
+  await requireAdmin();
 
   const { error, publicada } = await searchParams;
   const barrios = listBarriosWithMembers();
@@ -29,7 +21,7 @@ export default async function AdminNewsPage({ params, searchParams }: PageProps<
 
   return (
     <main className={styles.page}>
-      <AdminNav token={token} active="novedades" />
+      <AdminNav active="novedades" />
       <header className={styles.header}>
         <h1>Novedades</h1>
         <p>
@@ -39,7 +31,6 @@ export default async function AdminNewsPage({ params, searchParams }: PageProps<
       </header>
 
       <form action={publishPtpNews} className={styles.newsForm}>
-        <input type="hidden" name="token" value={token} />
         <h2>Publicar una novedad del PTP Chaco</h2>
         <label className={styles.newsField}>
           Para
@@ -80,7 +71,6 @@ export default async function AdminNewsPage({ params, searchParams }: PageProps<
             showBarrio
             actions={
               <form action={deleteNewsAdmin} className={styles.actions}>
-                <input type="hidden" name="token" value={token} />
                 <input type="hidden" name="id" value={post.id} />
                 <ConfirmButton
                   className={`${styles.button} ${styles.buttonDanger}`}

@@ -143,7 +143,7 @@ export async function deleteHelp(formData: FormData) {
   redirect("/organizate/ayuda");
 }
 
-// ---------- Novedades (las de los delegados; las del PTP van por /admin) ----------
+// ---------- Novedades (las de los delegados; las del PTP van por /ptpadmin) ----------
 
 export type NewsState = { error: string | null };
 
