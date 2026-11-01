@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
-import BottomNav from "./BottomNav";
 import CloudsView from "./CloudsView";
 import ContactView from "./ContactView";
 import HelpView from "./HelpView";
@@ -35,22 +34,9 @@ const RISK_MAPS = [
 type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
 type BaseMapKey = "osm" | "satelite";
 
-// Pestañas en el orden en que se muestran; la app abre en la portada ("inicio").
-const TABS = [
-  { key: "inicio", label: "Inicio" },
-  { key: "riesgo", label: "Riesgo" },
-  { key: "mapa", label: "Mapa" },
-  { key: "crecida", label: "Crecida" },
-  { key: "info", label: "Información" },
-  { key: "pronosticos", label: "Pronósticos" },
-  { key: "nubes", label: "Nubes" },
-  { key: "ayuda", label: "Ayuda" },
-  { key: "contacto", label: "Contactanos" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
-
-// Pestañas fijas de la barra inferior del celular; el resto va en el menú "Más".
-const PRIMARY_TABS: readonly TabKey[] = ["inicio", "riesgo", "mapa", "crecida"];
+// Secciones de la app; abre en la portada ("inicio"). La navegación entre ellas se está
+// rediseñando y por ahora no se muestra.
+type TabKey = "inicio" | "riesgo" | "mapa" | "crecida" | "info" | "pronosticos" | "nubes" | "ayuda" | "contacto";
 
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
@@ -252,26 +238,12 @@ function TrendArrow({ state }: { state: unknown }) {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<TabKey>("inicio");
-  const nextTab = TABS[TABS.findIndex((tab) => tab.key === activeTab) + 1];
-  const tabsRef = useRef<HTMLDivElement | null>(null);
+  const [activeTab] = useState<TabKey>("inicio");
 
   useEffect(() => {
     registerVisit();
   }, []);
 
-  // El botón Siguiente queda al final del contenido: al cambiar de pestaña se vuelve arriba.
-  const goToTab = (key: TabKey) => {
-    setActiveTab(key);
-    window.scrollTo({ top: 0 });
-  };
-
-  // En el celular la barra de pestañas se desliza: se trae a la vista la pestaña activa.
-  useEffect(() => {
-    tabsRef.current
-      ?.querySelector('[aria-selected="true"]')
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [activeTab]);
   const [riskData, setRiskData] = useState<Record<string, unknown> | null>(null);
   const [riskLoading, setRiskLoading] = useState(true);
   const [riskError, setRiskError] = useState<string | null>(null);
@@ -1018,49 +990,26 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-
-        <div ref={tabsRef} className={styles.tabs} role="tablist" aria-label="Pestañas principales">
-          {TABS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              className={`${styles.tab} ${activeTab === key ? styles.tabActive : ""}`}
-              onClick={() => goToTab(key)}
-              role="tab"
-              aria-selected={activeTab === key}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <section className={styles.panel}>
           {activeTab === "inicio" ? (
             <div className={styles.cover}>
               <p className={styles.coverKicker}>El fenómeno El Niño trae lluvias e inundaciones</p>
-              <h1 className={styles.coverTitle}>¿Estoy en riesgo?</h1>
+              <h1 className={styles.coverTitle}>Organizate con tus vecinos</h1>
               <p className={styles.coverText}>
-                Mirá el mapa interactivo para saber si estás en una zona de riesgo por lluvia, crecida de ríos, o
-                ambos.
-              </p>
-              <p className={styles.coverNote}>
-                Esta app tiene datos de zonas de riesgo para el Área Metropolitana Gran Resistencia, y Colonia Benítez.
-              </p>
-              <p className={styles.coverNote}>
-                Los datos utilizados se corresponden con la información oficial disponible.
+                Cuando el agua sube, los que primero ayudan son los vecinos. Esta app es para organizarnos barrio por
+                barrio: conocernos, avisarnos y estar preparados.
               </p>
               <div className={styles.organizate}>
-                <p>Cuando el agua sube, los que primero ayudan son los vecinos.</p>
+                <p>Sumate al comité de emergencia de tu barrio.</p>
                 <Link href="/organizate" className={styles.organizateButton}>
                   ¡Organizate!
                 </Link>
               </div>
-              {nextTab ? (
-                <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
-                  Siguiente
-                  <span aria-hidden="true">→</span>
-                </button>
-              ) : null}
+              <p className={styles.coverNote}>
+                También podés saber si vivís en una zona de riesgo por lluvia o crecida de ríos, con datos oficiales
+                para el Área Metropolitana Gran Resistencia y Colonia Benítez.
+              </p>
+              <p className={styles.coverNote}>Iniciativa del PTP Chaco, no del Estado.</p>
               <div className={styles.coverCredits}>
                 <span>Creado por</span>
                 <a href="https://ptpchaco.org.ar" target="_blank" rel="noreferrer">
@@ -1399,19 +1348,8 @@ export default function Home() {
               )}
             </div>
           )}
-
-          {activeTab !== "inicio" && nextTab ? (
-            <div className={styles.nextNav}>
-              <button type="button" className={styles.coverButton} onClick={() => goToTab(nextTab.key)}>
-                Siguiente: {nextTab.label}
-                <span aria-hidden="true">→</span>
-              </button>
-            </div>
-          ) : null}
         </section>
       </main>
-
-      <BottomNav tabs={TABS} primary={PRIMARY_TABS} active={activeTab} onSelect={goToTab} />
     </div>
   );
 }

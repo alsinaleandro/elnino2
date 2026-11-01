@@ -13,165 +13,6 @@
   gap: 10px;
 }
 
-/* En el celular las pestañas no entran en una fila: se deslizan horizontalmente. */
-.tabs {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding: 3px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.04);
-  border: 1px solid #e5e7eb;
-  gap: 4px;
-}
-
-.tab {
-  border: none;
-  background: transparent;
-  color: #374151;
-  font-size: 0.9rem;
-  font-weight: 700;
-  padding: 7px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
-}
-
-/* Celular primero: abajo va la barra de navegación (BottomNav.tsx) y la barra de pestañas de
-   arriba se oculta. Desde tablet es al revés. */
-.tabs {
-  display: none;
-}
-
-.page {
-  /* Lugar para la barra inferior fija (~62px) más el área segura del celular. */
-  padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-}
-
-.bottomNav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Por encima de los controles de Leaflet (z-index 1000). */
-  z-index: 1100;
-  display: flex;
-  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, 0.97);
-  border-top: 1px solid #e5e7eb;
-  box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
-}
-
-.bottomNavItem {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-height: 54px;
-  padding: 6px 2px;
-  border: none;
-  border-radius: 12px;
-  background: transparent;
-  color: #6b7280;
-  font-size: 0.72rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.bottomNavItem span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.bottomNavItemActive {
-  color: #111827;
-  background: #e0f2fe;
-}
-
-.bottomNavIcon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.bottomNavBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1090;
-  background: rgba(15, 23, 42, 0.35);
-}
-
-/* Menú "Más": se abre encima de la barra inferior. */
-.bottomNavSheet {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(74px + env(safe-area-inset-bottom, 0px));
-  z-index: 1100;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 12px;
-  border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
-}
-
-.bottomNavSheetItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #111827;
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-align: left;
-  cursor: pointer;
-}
-
-.bottomNavSheetItemActive {
-  border-color: #111827;
-  background: #e0f2fe;
-}
-
-.bottomNavItem:focus-visible,
-.bottomNavSheetItem:focus-visible {
-  outline: 3px solid #38bdf8;
-  outline-offset: -3px;
-}
-
-@media (min-width: 768px) {
-  .tabs {
-    display: inline-flex;
-  }
-
-  .page {
-    padding-bottom: 24px;
-  }
-
-  .bottomNav,
-  .bottomNavSheet,
-  .bottomNavBackdrop {
-    display: none;
-  }
-}
-
 /* Portada: primera pantalla al abrir la app. Pensada para el alto de un celular. */
 .cover {
   display: flex;
@@ -223,24 +64,6 @@
   color: #4b5563;
 }
 
-.coverButton {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  min-height: 52px;
-  padding: 14px 32px;
-  border: none;
-  border-radius: 999px;
-  background: #111827;
-  color: white;
-  font-size: 1.1rem;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.2);
-}
-
 /* Invitación a sumarse al comité de barrio (/organizate). */
 .organizate {
   display: flex;
@@ -267,24 +90,6 @@
   font-size: 1.05rem;
   font-weight: 800;
   text-decoration: none;
-}
-
-/* Botón Siguiente al final de cada pestaña. */
-.nextNav {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
-.coverButton:focus-visible {
-  outline: 3px solid #38bdf8;
-  outline-offset: 3px;
-}
-
-@media (hover: hover) {
-  .coverButton:hover {
-    background: #1f2937;
-  }
 }
 
 /* "Creado por" y el logo de PTP Chaco, al pie de la portada, alineados a la derecha. */
@@ -323,12 +128,6 @@
   .cover {
     gap: 10px;
     padding: 4px 4px 0;
-  }
-
-  .coverButton {
-    margin-top: 2px;
-    min-height: 48px;
-    padding: 12px 28px;
   }
 
   .coverCredits {
@@ -416,20 +215,6 @@
   color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-
-/* Solo con mouse: en pantallas táctiles :hover queda "pegado" tras tocar la pestaña y
-   tapaba el fondo oscuro de la pestaña activa. */
-@media (hover: hover) {
-  .tab:not(.tabActive):hover {
-    background: rgba(148, 163, 184, 0.08);
-  }
-}
-
-.tabActive {
-  background: #111827;
-  color: white;
-  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.15);
 }
 
 .panel {
