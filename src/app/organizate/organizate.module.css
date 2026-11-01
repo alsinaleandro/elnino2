@@ -473,3 +473,19 @@
   color: #111827;
   font-weight: 700;
 }
+
+/* "o" entre el botón de Google y el ingreso con e-mail. */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid #e5e7eb;
+}

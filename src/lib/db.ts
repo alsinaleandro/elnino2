@@ -87,12 +87,13 @@ function migrate(db: DatabaseSync) {
       visits INTEGER NOT NULL DEFAULT 0
     );
 
-    -- Vecinos que se sumaron a los comités de barrio (Idea 1), con su cuenta de Google.
-    -- "consent_at" es cuándo aceptaron la pantalla "Cómo usamos tus datos". WhatsApp y e-mail no
-    -- los ve ningún otro vecino. Mientras "whatsapp" sea NULL, el vecino no completó sus datos.
+    -- Vecinos que se sumaron a los comités de barrio (Idea 1), con su cuenta de Google o con e-mail
+    -- y contraseña ("google_sub" NULL si nunca entró con Google). "consent_at" es cuándo aceptaron
+    -- la pantalla "Cómo usamos tus datos". WhatsApp y e-mail no los ve ningún otro vecino. Mientras
+    -- "whatsapp" sea NULL, el vecino no completó sus datos.
     CREATE TABLE IF NOT EXISTS neighbors (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      google_sub TEXT NOT NULL UNIQUE,
+      google_sub TEXT UNIQUE,
       email      TEXT NOT NULL,
       first_name TEXT NOT NULL,
       last_name  TEXT NOT NULL,
@@ -203,6 +204,19 @@ function migrate(db: DatabaseSync) {
     );
     CREATE INDEX IF NOT EXISTS news_posts_barrio ON news_posts (barrio_id, id);
     CREATE INDEX IF NOT EXISTS news_posts_neighbor ON news_posts (neighbor_id);
+
+    -- Links por e-mail para entrar con contraseña: "alta" (crear la cuenta, después de aceptar
+    -- "Cómo usamos tus datos") y "clave" (olvidé mi contraseña). Al abrir el link el vecino elige
+    -- su contraseña; recién ahí se crea la cuenta, así que nadie puede usar un e-mail ajeno. Se
+    -- guarda el hash del token y cada link sirve una sola vez.
+    CREATE TABLE IF NOT EXISTS email_tokens (
+      token_hash TEXT PRIMARY KEY,
+      email      TEXT NOT NULL,
+      purpose    TEXT NOT NULL CHECK (purpose IN ('alta', 'clave')),
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS email_tokens_email ON email_tokens (email, created_at);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
@@ -218,7 +232,55 @@ function migrate(db: DatabaseSync) {
   // vecino, solo el total de seguidores de cada delegado.
   addColumn(db, "neighbors", "delegate_since", "TEXT");
   addColumn(db, "neighbors", "follows_id", "INTEGER");
+  // Ingreso con e-mail y contraseña: hash scrypt de la contraseña (NULL si solo entra con Google).
+  addColumn(db, "neighbors", "password_hash", "TEXT");
+  allowNeighborsWithoutGoogle(db);
   db.exec("CREATE INDEX IF NOT EXISTS neighbors_follows ON neighbors (follows_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS neighbors_email ON neighbors (email)");
+}
+
+// Las bases creadas antes del ingreso con e-mail tienen "google_sub" NOT NULL. SQLite no deja
+// cambiar una columna, así que se rehace la tabla una sola vez, copiando todo en una transacción:
+// si algo falla, queda como estaba.
+function allowNeighborsWithoutGoogle(db: DatabaseSync) {
+  const columns = db.prepare("PRAGMA table_info(neighbors)").all() as Array<{ name: string; notnull: number }>;
+  if (columns.find((column) => column.name === "google_sub")?.notnull !== 1) return;
+
+  const names = columns.map((column) => column.name).join(", ");
+  // El contador de ids (AUTOINCREMENT) se conserva: el id de un vecino borrado no se vuelve a usar.
+  const sequence = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'neighbors'").get() as
+    | { seq: number }
+    | undefined;
+  db.exec("BEGIN");
+  try {
+    db.exec(`
+      CREATE TABLE neighbors_new (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        google_sub     TEXT UNIQUE,
+        email          TEXT NOT NULL,
+        first_name     TEXT NOT NULL,
+        last_name      TEXT NOT NULL,
+        whatsapp       TEXT,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL,
+        consent_at     TEXT NOT NULL,
+        barrio_id      INTEGER,
+        delegate_since TEXT,
+        follows_id     INTEGER,
+        password_hash  TEXT
+      );
+      INSERT INTO neighbors_new (${names}) SELECT ${names} FROM neighbors;
+      DROP TABLE neighbors;
+      ALTER TABLE neighbors_new RENAME TO neighbors;
+    `);
+    if (sequence) {
+      db.prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'neighbors'").run(sequence.seq);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 function addColumn(db: DatabaseSync, table: string, column: string, definition: string) {

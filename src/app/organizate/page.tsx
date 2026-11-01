@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getBarrioSummary } from "@/lib/chat";
 import { listDelegates } from "@/lib/delegates";
+import { isEmailLoginConfigured } from "@/lib/emailAuth";
 import { countHelpPosts } from "@/lib/help";
 import { newsSummary } from "@/lib/news";
 import { isGoogleConfigured } from "@/lib/google";
@@ -12,13 +13,15 @@ import { timeAgo } from "../format";
 import { deleteAccount, logout } from "./actions";
 import BarrioForm from "./BarrioForm";
 import DatosInfo from "./DatosInfo";
+import { LoginForm, ResetForm, SignupForm } from "./EmailForms";
 import ProfileForm from "./ProfileForm";
 import styles from "./organizate.module.css";
 
-// "¡Organizate!" (Idea 1): aceptación de datos, ingreso con Google, datos del vecino y barrio.
-// Sin sesión: pantalla de aceptación y después el botón de Google (?paso=ingreso). Con sesión pero
-// sin WhatsApp: completar datos. Sin barrio (o con ?paso=barrio): elegir barrio. Con todo: la
-// página del vecino.
+// "¡Organizate!" (Idea 1): aceptación de datos, ingreso (con Google o con e-mail y contraseña), datos
+// del vecino y barrio. Sin sesión: pantalla de aceptación y después crear la cuenta (?paso=ingreso);
+// quien ya se sumó entra por ?paso=entrar, y ?paso=recuperar pide una contraseña nueva. Con sesión
+// pero sin WhatsApp: completar datos. Sin barrio (o con ?paso=barrio): elegir barrio. Con todo: el
+// menú de Mi barrio.
 export const metadata: Metadata = {
   title: "¡Organizate! · Comités de barrio",
   description: "Sumate al comité de emergencia de tu barrio",
@@ -27,7 +30,7 @@ export const metadata: Metadata = {
 const ERRORS: Record<string, string> = {
   google: "No pudimos completar el ingreso con Google. Probá de nuevo.",
   aceptar: "Todavía no te sumaste. Leé cómo usamos tus datos y tocá \"Estoy de acuerdo\".",
-  config: "El ingreso con Google todavía no está configurado en este servidor.",
+  config: "El ingreso todavía no está configurado en este servidor.",
 };
 
 function GoogleIcon() {
@@ -56,16 +59,58 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
   const neighbor = await getCurrentNeighbor();
   const errorMessage = typeof error === "string" ? ERRORS[error] : undefined;
 
+  const emailLogin = isEmailLoginConfigured();
+  const googleLogin = isGoogleConfigured();
+
   let content;
   if (!neighbor && paso === "ingreso") {
+    // Después de "Estoy de acuerdo": acá se crean las cuentas nuevas.
     content = (
       <>
-        <h1>Ingresá</h1>
+        <h1>Creá tu cuenta</h1>
         <p className={styles.muted}>
-          Usamos tu cuenta de Google solo para identificarte. No publicamos nada en tu nombre.
+          Usamos tu cuenta solo para identificarte. No publicamos nada en tu nombre.
         </p>
-        {isGoogleConfigured() ? <GoogleButton accept /> : <p className={styles.error}>{ERRORS.config}</p>}
+        {googleLogin ? <GoogleButton accept /> : null}
+        {googleLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
+        {emailLogin ? <SignupForm /> : null}
+        {!googleLogin && !emailLogin ? <p className={styles.error}>{ERRORS.config}</p> : null}
+        <p className={styles.muted}>
+          ¿Ya tenés cuenta? <Link href="/organizate?paso=entrar">Entrá</Link>.
+        </p>
         <Link href="/organizate" className={styles.btnGhost}>
+          Volver
+        </Link>
+      </>
+    );
+  } else if (!neighbor && paso === "entrar") {
+    // Para quien ya se sumó: con Google o con e-mail y contraseña.
+    content = (
+      <>
+        <h1>Entrá</h1>
+        {googleLogin ? <GoogleButton accept={false} /> : null}
+        {googleLogin && emailLogin ? <div className={styles.divider}>o</div> : null}
+        {emailLogin ? (
+          <>
+            <LoginForm />
+            <p className={styles.muted}>
+              <Link href="/organizate?paso=recuperar">¿Olvidaste tu contraseña?</Link> ¿Entrabas con Google y querés
+              una contraseña? Pedila ahí con el mismo e-mail.
+            </p>
+          </>
+        ) : null}
+        <p className={styles.muted}>
+          ¿Todavía no te sumaste? <Link href="/organizate">Leé cómo usamos tus datos</Link>.
+        </p>
+      </>
+    );
+  } else if (!neighbor && paso === "recuperar") {
+    content = (
+      <>
+        <h1>Elegí una contraseña nueva</h1>
+        <p className={styles.muted}>Escribí el e-mail de tu cuenta y te mandamos un link.</p>
+        {emailLogin ? <ResetForm /> : <p className={styles.error}>{ERRORS.config}</p>}
+        <Link href="/organizate?paso=entrar" className={styles.btnGhost}>
           Volver
         </Link>
       </>
@@ -88,7 +133,7 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
           barrio: conocernos, avisarnos y estar preparados.
         </p>
         <p className={styles.muted}>
-          ¿Ya te sumaste? <a href="/api/auth/google">Entrá con tu cuenta de Google</a>.
+          ¿Ya te sumaste? <Link href="/organizate?paso=entrar">Entrá a tu cuenta</Link>.
         </p>
         <DatosInfo />
         <p>

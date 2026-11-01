@@ -6,15 +6,16 @@
 // se cambia la contraseña, todas las sesiones abiertas dejan de valer. Después de varios intentos
 // fallidos desde la misma IP, el ingreso se bloquea un rato.
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { clientIp, createFailureLimiter } from "./clientIp";
 import { secureCookies } from "./neighbors";
 
 const COOKIE = "admin_sesion";
 const SESSION_HOURS = 12;
 const MIN_PASSWORD_LENGTH = 12;
-const MAX_FAILURES = 5;
-const BLOCK_MS = 15 * 60 * 1000;
+// 5 intentos fallidos desde una IP bloquean el ingreso 15 minutos.
+const failures = createFailureLimiter(5, 15 * 60 * 1000);
 
 const digest = (value: string) => createHash("sha256").update(value).digest();
 
@@ -35,32 +36,6 @@ function checkPassword(input: unknown) {
   return timingSafeEqual(digest(input), digest(password));
 }
 
-// ---------- Intentos fallidos (en memoria: se reinician al reiniciar la app) ----------
-
-const failures = new Map<string, { count: number; since: number }>();
-
-async function clientIp() {
-  const store = await headers();
-  // Detrás de nginx la IP real llega en X-Forwarded-For (la primera de la lista).
-  return store.get("x-forwarded-for")?.split(",")[0]?.trim() || store.get("x-real-ip") || "desconocida";
-}
-
-function isBlocked(ip: string) {
-  const entry = failures.get(ip);
-  if (!entry) return false;
-  if (Date.now() - entry.since > BLOCK_MS) {
-    failures.delete(ip);
-    return false;
-  }
-  return entry.count >= MAX_FAILURES;
-}
-
-function recordFailure(ip: string) {
-  const entry = failures.get(ip);
-  if (!entry || Date.now() - entry.since > BLOCK_MS) failures.set(ip, { count: 1, since: Date.now() });
-  else entry.count += 1;
-}
-
 // ---------- Sesión ----------
 
 export type LoginResult = "ok" | "wrong" | "blocked" | "disabled";
@@ -71,12 +46,12 @@ export async function login(input: unknown): Promise<LoginResult> {
   if (!password) return "disabled";
 
   const ip = await clientIp();
-  if (isBlocked(ip)) return "blocked";
+  if (failures.isBlocked(ip)) return "blocked";
   if (!checkPassword(input)) {
-    recordFailure(ip);
-    return isBlocked(ip) ? "blocked" : "wrong";
+    failures.record(ip);
+    return failures.isBlocked(ip) ? "blocked" : "wrong";
   }
-  failures.delete(ip);
+  failures.clear(ip);
 
   const expires = Date.now() + SESSION_HOURS * 60 * 60 * 1000;
   (await cookies()).set(COOKIE, `${expires}.${sign(password, String(expires))}`, {

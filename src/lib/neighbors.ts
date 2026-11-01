@@ -62,6 +62,18 @@ export function findNeighborByGoogle(sub: string) {
   return row?.id ?? null;
 }
 
+// Quien creó su cuenta con e-mail y contraseña y después entra con Google con el mismo e-mail sigue
+// siendo el mismo vecino. Es seguro porque las cuentas con e-mail se crean desde un link mandado a
+// ese e-mail (emailAuth.ts) y Google solo manda e-mails verificados.
+export function linkGoogleByEmail(sub: string, email: string) {
+  const row = db
+    .prepare("SELECT id FROM neighbors WHERE email = ? AND google_sub IS NULL ORDER BY id LIMIT 1")
+    .get(email) as { id: number } | undefined;
+  if (!row) return null;
+  db.prepare("UPDATE neighbors SET google_sub = ?, updated_at = ? WHERE id = ?").run(sub, new Date().toISOString(), row.id);
+  return row.id;
+}
+
 // Alta de un vecino que acaba de aceptar la pantalla de datos. Nombre y apellido vienen de Google
 // y el vecino los corrige al completar sus datos.
 export function createNeighbor(input: { sub: string; email: string; firstName: string; lastName: string }) {
@@ -102,6 +114,7 @@ export function updateProfile(id: number, profile: ReturnType<typeof parseProfil
 // barrio, sus publicaciones de ayuda mutua y sus novedades, no queda copia. Si era delegado, quienes
 // lo seguían quedan sin delegado.
 export function deleteNeighbor(id: number) {
+  db.prepare("DELETE FROM email_tokens WHERE email = (SELECT email FROM neighbors WHERE id = ?)").run(id);
   db.prepare("UPDATE neighbors SET follows_id = NULL WHERE follows_id = ?").run(id);
   db.prepare("DELETE FROM chat_messages WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM help_posts WHERE neighbor_id = ?").run(id);

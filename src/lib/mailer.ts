@@ -8,6 +8,8 @@ import { mapLink, whatsappLink } from "./links";
 
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL ?? "elnino@ptpchaco.org.ar";
 
+export const isMailerConfigured = () => Boolean(process.env.SMTP_HOST);
+
 let transport: Transporter | null = null;
 
 function getTransport() {
@@ -71,6 +73,44 @@ export async function sendPrivateMessage({ firstName, lastName, whatsapp, email,
     return true;
   } catch (error) {
     console.error("[contacto] No se pudo enviar el e-mail:", error);
+    return false;
+  }
+}
+
+// Link para crear la cuenta con e-mail o para elegir una contraseña nueva (emailAuth.ts). Devuelve
+// true si el e-mail salió.
+export async function sendPasswordLink(to: string, link: string, purpose: "alta" | "clave", hours: number) {
+  const mailer = getTransport();
+  if (!mailer) {
+    console.warn("[organizate] SMTP sin configurar: no se pudo mandar el link de ingreso.");
+    return false;
+  }
+
+  const intro =
+    purpose === "alta"
+      ? "Para terminar de crear tu cuenta en ¡Organizate! (comités de emergencia de barrio), abrí este link y elegí tu contraseña:"
+      : "Pediste elegir una contraseña nueva para entrar a ¡Organizate! (comités de emergencia de barrio). Abrí este link:";
+  const text = [
+    intro,
+    "",
+    link,
+    "",
+    `El link vence en ${hours} ${hours === 1 ? "hora" : "horas"} y sirve una sola vez.`,
+    "Si no fuiste vos, ignorá este e-mail: no se crea ni se cambia nada.",
+    "",
+    "— PTP Chaco",
+  ].join("\n");
+
+  try {
+    await mailer.sendMail({
+      from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+      to,
+      subject: purpose === "alta" ? "Terminá de crear tu cuenta en ¡Organizate!" : "Elegí tu contraseña nueva de ¡Organizate!",
+      text,
+    });
+    return true;
+  } catch (error) {
+    console.error("[organizate] No se pudo enviar el link de ingreso:", error);
     return false;
   }
 }

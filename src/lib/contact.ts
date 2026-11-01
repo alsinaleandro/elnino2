@@ -30,7 +30,7 @@ export function requireName(value: unknown, label: string) {
   return name;
 }
 
-function requireEmail(value: unknown) {
+export function requireEmail(value: unknown) {
   const email = clean(value).toLowerCase();
   if (email.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
     throw new ValidationError("Revisá el e-mail.");

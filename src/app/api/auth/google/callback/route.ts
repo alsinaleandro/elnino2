@@ -1,7 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { finishLogin } from "@/lib/google";
-import { createNeighbor, findNeighborByGoogle, startSession, updateNeighborEmail } from "@/lib/neighbors";
+import {
+  createNeighbor,
+  findNeighborByGoogle,
+  linkGoogleByEmail,
+  startSession,
+  updateNeighborEmail,
+} from "@/lib/neighbors";
 
 // Google vuelve acá después de que el vecino elige su cuenta. Se comprueba el "state", se abre la
 // sesión y se vuelve a /organizate (ahí se completan los datos si faltan).
@@ -27,7 +33,7 @@ export async function GET(request: Request) {
     return back("?error=google");
   }
 
-  let neighborId = findNeighborByGoogle(profile.sub);
+  let neighborId = findNeighborByGoogle(profile.sub) ?? linkGoogleByEmail(profile.sub, profile.email);
   if (neighborId === null) {
     if (accepted !== "1") return back("?error=aceptar");
     neighborId = createNeighbor(profile);

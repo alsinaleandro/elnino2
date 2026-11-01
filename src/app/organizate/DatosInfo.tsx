@@ -16,7 +16,10 @@ export default function DatosInfo() {
       <h2>¿Qué datos te vamos a pedir?</h2>
       <ul>
         <li>Nombre y apellido</li>
-        <li>E-mail (entrás con tu cuenta de Google)</li>
+        <li>
+          E-mail (entrás con tu cuenta de Google, o con tu e-mail y una contraseña que guardamos cifrada: nadie puede
+          leerla)
+        </li>
         <li>WhatsApp</li>
         <li>Barrio (lo detectamos con tu ubicación, y podés corregirlo)</li>
       </ul>

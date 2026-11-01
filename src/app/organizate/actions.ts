@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { detectBarrio, findOrCreateBarrio, getBarrio, setNeighborBarrio, type Detection } from "@/lib/barrios";
 import { becomeDelegate, followDelegate, resignDelegate, unfollowDelegate } from "@/lib/delegates";
+import { loginWithPassword, redeemPasswordLink, requestPasswordLink } from "@/lib/emailAuth";
 import { addHelpPost, deleteHelpPost, resolveHelpPost } from "@/lib/help";
 import { addDelegateNews, deleteOwnNews } from "@/lib/news";
 import {
@@ -10,6 +11,7 @@ import {
   endSession,
   getCurrentNeighbor,
   parseProfile,
+  startSession,
   updateProfile,
   ValidationError,
 } from "@/lib/neighbors";
@@ -170,6 +172,50 @@ export async function deleteMyNews(formData: FormData) {
   const neighbor = await currentMember();
   deleteOwnNews(neighbor.id, Number(formData.get("novedad")));
   redirect("/organizate/novedades");
+}
+
+// ---------- Ingreso con e-mail y contraseña ----------
+
+export type EmailState = { error: string | null; sent?: boolean };
+
+async function requestLink(formData: FormData, purpose: "alta" | "clave"): Promise<EmailState> {
+  try {
+    await requestPasswordLink(formData.get("email"), purpose);
+  } catch (error) {
+    if (error instanceof ValidationError) return { error: error.message };
+    throw error;
+  }
+  return { error: null, sent: true };
+}
+
+// "Crear cuenta": se llega después de aceptar "Cómo usamos tus datos".
+export async function requestSignupLink(_state: EmailState, formData: FormData) {
+  return requestLink(formData, "alta");
+}
+
+export async function requestResetLink(_state: EmailState, formData: FormData) {
+  return requestLink(formData, "clave");
+}
+
+export async function emailLogin(_state: EmailState, formData: FormData): Promise<EmailState> {
+  const result = await loginWithPassword(formData.get("email"), formData.get("password"));
+  if (!result.ok) return { error: result.error };
+  await startSession(result.neighborId);
+  redirect("/organizate");
+}
+
+// Desde el link del e-mail: elige la contraseña y entra.
+export async function choosePassword(_state: EmailState, formData: FormData): Promise<EmailState> {
+  if (formData.get("password") !== formData.get("repeat")) return { error: "Las dos contraseñas no coinciden." };
+  let neighborId: number;
+  try {
+    neighborId = await redeemPasswordLink(formData.get("token"), formData.get("password"));
+  } catch (error) {
+    if (error instanceof ValidationError) return { error: error.message };
+    throw error;
+  }
+  await startSession(neighborId);
+  redirect("/organizate");
 }
 
 export async function logout() {
