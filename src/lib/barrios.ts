@@ -7,6 +7,7 @@ import { ValidationError } from "./contact";
 import { db } from "./db";
 import { leaveBarrioRoles } from "./delegates";
 import { geometryContainsPoint, type GeoJsonMultiPolygon } from "./geo";
+import { closeHelpPostsOf } from "./help";
 import { sanitize } from "./moderation";
 import { lookupOsm, type OsmBarrio } from "./overpass";
 
@@ -179,7 +180,10 @@ export function setNeighborBarrio(neighborId: number, barrio: Barrio, point: { l
   const current = db.prepare("SELECT barrio_id FROM neighbors WHERE id = ?").get(neighborId) as
     | { barrio_id: number | null }
     | undefined;
-  if (current?.barrio_id != null && current.barrio_id !== barrio.id) leaveBarrioRoles(neighborId);
+  if (current?.barrio_id != null && current.barrio_id !== barrio.id) {
+    leaveBarrioRoles(neighborId);
+    closeHelpPostsOf(neighborId);
+  }
 
   db.prepare("UPDATE neighbors SET barrio_id = ?, updated_at = ? WHERE id = ?").run(
     barrio.id,

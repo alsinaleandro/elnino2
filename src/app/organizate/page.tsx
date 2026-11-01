@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getBarrioSummary } from "@/lib/chat";
 import { listDelegates } from "@/lib/delegates";
+import { countHelpPosts } from "@/lib/help";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
 import AppNav, { MenuList } from "../AppNav";
@@ -133,9 +134,10 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
       </>
     );
   } else {
-    // Menú del barrio, como en la maqueta. Funcionan el chat y los delegados; novedades y ayuda mutua
-    // se muestran apagados hasta que estén hechos.
+    // Menú del barrio, como en la maqueta. Funcionan el chat, los delegados y la ayuda mutua;
+    // novedades se muestra apagado hasta que esté hecho.
     const summary = getBarrioSummary(neighbor.barrio.id);
+    const help = countHelpPosts(neighbor.barrio.id);
     const delegates = listDelegates(neighbor.barrio.id, neighbor);
     const followed = delegates.find((delegate) => delegate.followedByMe);
     const isDelegate = neighbor.delegateSince !== null;
@@ -173,7 +175,17 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
                     ? `No seguís a ningún delegado · hay ${delegates.length}`
                     : "Todavía no hay delegados · postulate",
             },
-            { icon: "🤝", label: "Ayuda mutua", detail: "Muy pronto: ofrecé o pedí ayuda" },
+            {
+              href: "/organizate/ayuda",
+              icon: "🤝",
+              label: "Ayuda mutua",
+              detail:
+                help.necesito + help.ofrezco > 0
+                  ? `${help.necesito} ${help.necesito === 1 ? "necesita" : "necesitan"} · ${help.ofrezco} ${
+                      help.ofrezco === 1 ? "ofrece" : "ofrecen"
+                    }`
+                  : "Ofrecé o pedí ayuda a tus vecinos",
+            },
           ]}
         />
         <p className={styles.muted}>

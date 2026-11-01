@@ -37,6 +37,10 @@ export default function DatosInfo() {
           A qué delegado seguís <strong>no lo ve ningún vecino ni delegado</strong>.
         </li>
         <li>No hay mensajes privados entre vecinos: todo se habla en el chat del barrio, a la vista de todos.</li>
+        <li>
+          En ayuda mutua, si pedís ayuda y elegís que te contacten directo, <strong>tu WhatsApp se muestra en esa
+          publicación</strong> para los vecinos de tu barrio.
+        </li>
       </ul>
 
       <h2>Delegados</h2>

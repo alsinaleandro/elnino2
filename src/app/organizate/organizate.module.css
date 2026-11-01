@@ -163,6 +163,63 @@
   gap: 8px;
 }
 
+/* ---------- Ayuda mutua ---------- */
+
+.filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filter {
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+  text-decoration: none;
+}
+
+.filterActive {
+  border-color: #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.tagOfrezco,
+.tagNecesito {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.tagOfrezco {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tagNecesito {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.postText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.field textarea {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  resize: vertical;
+}
+
 /* La caja para escribir queda pegada abajo, encima de la barra de navegación del celular. */
 .chatInput {
   position: sticky;

@@ -98,11 +98,13 @@ export function updateProfile(id: number, profile: ReturnType<typeof parseProfil
   );
 }
 
-// "Borrar mis datos" (Ley 25.326): se borra el vecino, sus sesiones y sus mensajes del chat del
-// barrio, no queda copia. Si era delegado, quienes lo seguían quedan sin delegado.
+// "Borrar mis datos" (Ley 25.326): se borra el vecino, sus sesiones, sus mensajes del chat del
+// barrio y sus publicaciones de ayuda mutua, no queda copia. Si era delegado, quienes lo seguían
+// quedan sin delegado.
 export function deleteNeighbor(id: number) {
   db.prepare("UPDATE neighbors SET follows_id = NULL WHERE follows_id = ?").run(id);
   db.prepare("DELETE FROM chat_messages WHERE neighbor_id = ?").run(id);
+  db.prepare("DELETE FROM help_posts WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM sessions WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM neighbors WHERE id = ?").run(id);
 }

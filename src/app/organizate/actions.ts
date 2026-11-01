@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { detectBarrio, findOrCreateBarrio, getBarrio, setNeighborBarrio, type Detection } from "@/lib/barrios";
 import { becomeDelegate, followDelegate, resignDelegate, unfollowDelegate } from "@/lib/delegates";
+import { addHelpPost, deleteHelpPost, resolveHelpPost } from "@/lib/help";
 import {
   deleteNeighbor,
   endSession,
@@ -77,7 +78,7 @@ export async function saveBarrio(_state: BarrioState, formData: FormData): Promi
 async function currentMember() {
   const neighbor = await getCurrentNeighbor();
   if (!neighbor?.whatsapp || !neighbor.barrio) redirect("/organizate");
-  return neighbor;
+  return { id: neighbor.id, barrioId: neighbor.barrio.id };
 }
 
 export async function applyAsDelegate() {
@@ -108,6 +109,37 @@ export async function unfollow() {
   const neighbor = await currentMember();
   unfollowDelegate(neighbor.id);
   redirect("/organizate/delegados");
+}
+
+// ---------- Ayuda mutua (Idea 6) ----------
+
+export type HelpState = { error: string | null };
+
+export async function publishHelp(_state: HelpState, formData: FormData): Promise<HelpState> {
+  const neighbor = await currentMember();
+  try {
+    addHelpPost(neighbor.id, neighbor.barrioId, {
+      kind: formData.get("tipo"),
+      message: formData.get("texto"),
+      allowContact: formData.get("contacto") === "1",
+    });
+  } catch (error) {
+    if (error instanceof ValidationError) return { error: error.message };
+    throw error;
+  }
+  redirect("/organizate/ayuda");
+}
+
+export async function resolveHelp(formData: FormData) {
+  const neighbor = await currentMember();
+  resolveHelpPost(neighbor.id, Number(formData.get("publicacion")));
+  redirect("/organizate/ayuda");
+}
+
+export async function deleteHelp(formData: FormData) {
+  const neighbor = await currentMember();
+  deleteHelpPost(neighbor.id, Number(formData.get("publicacion")));
+  redirect("/organizate/ayuda");
 }
 
 export async function logout() {

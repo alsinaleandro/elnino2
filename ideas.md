@@ -251,10 +251,16 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
   - **Necesito:** "ayuda para subir los muebles", "leña", "lugar para mis animales".
 - Se conecta con la Idea 1 (registro y barrio) y con la Idea 3 (los delegados pueden coordinar).
 
+**Implementación** (en la rama `test`, página `/organizate/ayuda`, hecha el 01/11/2026)
+- Tabla `help_posts`, lógica en `src/lib/help.ts`. Filtros "Todo / Necesitan / Ofrecen".
+- Contacto: se tomó la posible solución del 27/10/2026. Quien publica que **necesita** algo puede tildar "Permitir que me contacten directo" y su WhatsApp se muestra en esa publicación, con botones para llamar y escribir. Si no, o si es un "Ofrezco", el contacto es por el chat del barrio o un delegado. El texto de "Cómo usamos tus datos" ya menciona esta excepción.
+- Duración (a confirmar): cada publicación se ve **7 días**. El autor puede marcarla "Ya está resuelto" o borrarla antes. Las resueltas y vencidas quedan en la base como historial.
+- Como mucho 5 publicaciones abiertas por vecino, hasta 300 caracteres, insultos tapados con el filtro de Contactanos.
+- Al cambiar de barrio, las publicaciones abiertas del vecino se cierran. Al borrar sus datos, se borran.
+
 **Puntos a definir más adelante**
-- Cómo se contactan las personas, ya que no hay mensajes privados en la app (Idea 1): ¿a través del delegado, o se publica el WhatsApp solo de quien lo autoriza en esa publicación?
-  - Posible solución (27/10/2026): quien publica que **necesita ayuda** puede permitir el contacto directo por WhatsApp o por llamada. Sería una excepción a la regla de datos ocultos, elegida por la propia persona en esa publicación.
-- Cuánto dura una publicación y cómo se marca como resuelta.
+- Confirmar la duración de 7 días, o si conviene una distinta para "Ofrezco" y "Necesito".
+- ¿Los delegados pueden cerrar publicaciones de otros vecinos (por ejemplo, las ya resueltas que nadie cerró)?
 
 ### Idea 7: Vecinos que van a necesitar ayuda para evacuar
 

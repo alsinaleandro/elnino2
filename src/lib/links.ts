@@ -10,5 +10,11 @@ export function whatsappLink(number: string) {
   return null;
 }
 
+// Para llamar desde el celular: el mismo número internacional que usa wa.me, con "+".
+export function phoneLink(number: string) {
+  const link = whatsappLink(number);
+  return link ? `tel:+${link.slice("https://wa.me/".length)}` : null;
+}
+
 export const mapLink = (latitude: number, longitude: number) =>
   `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;

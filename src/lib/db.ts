@@ -164,6 +164,24 @@ function migrate(db: DatabaseSync) {
     );
     CREATE INDEX IF NOT EXISTS chat_messages_barrio ON chat_messages (barrio_id, id);
     CREATE INDEX IF NOT EXISTS chat_messages_neighbor ON chat_messages (neighbor_id, created_at);
+
+    -- Ayuda mutua (Idea 6): publicaciones "Ofrezco" / "Necesito" del tablero de cada barrio.
+    -- "allow_contact" = quien pide ayuda eligió mostrar su WhatsApp en esa publicación (se lee de
+    -- neighbors, no se copia). "resolved_at" = la marcó como resuelta. Al borrar un vecino se
+    -- borran sus publicaciones.
+    CREATE TABLE IF NOT EXISTS help_posts (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      barrio_id        INTEGER NOT NULL,
+      neighbor_id      INTEGER NOT NULL,
+      kind             TEXT NOT NULL CHECK (kind IN ('ofrezco', 'necesito')),
+      message          TEXT NOT NULL,
+      original_message TEXT NOT NULL,
+      allow_contact    INTEGER NOT NULL DEFAULT 0,
+      created_at       TEXT NOT NULL,
+      resolved_at      TEXT
+    );
+    CREATE INDEX IF NOT EXISTS help_posts_barrio ON help_posts (barrio_id, created_at);
+    CREATE INDEX IF NOT EXISTS help_posts_neighbor ON help_posts (neighbor_id);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
