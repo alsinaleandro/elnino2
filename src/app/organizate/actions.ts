@@ -66,7 +66,8 @@ export async function saveBarrio(_state: BarrioState, formData: FormData): Promi
     if (error instanceof ValidationError) return { error: error.message };
     throw error;
   }
-  redirect("/organizate");
+  // Con el barrio elegido por primera vez el vecino terminó de sumarse: va a su Inicio.
+  redirect(neighbor.barrio ? "/organizate" : "/?bienvenida=1");
 }
 
 export async function logout() {

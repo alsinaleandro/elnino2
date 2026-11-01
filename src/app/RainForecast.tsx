@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import styles from "./page.module.css";
 
-type ForecastDay = {
+export type ForecastDay = {
   date: string;
   smnMm: number | null;
   openMeteoMm: number | null;
@@ -16,7 +16,7 @@ type ForecastDay = {
 
 type SourceInfo = { ok: boolean; fetchedAt?: string; stale?: boolean; error?: string };
 
-type ForecastPayload = {
+export type ForecastPayload = {
   days: ForecastDay[];
   sources: { smn: SourceInfo; openMeteo: SourceInfo };
 };
@@ -30,10 +30,10 @@ const RAIN_MM = 1;
 const RAIN_PROBABILITY = 50;
 
 const WEEKDAY = new Intl.DateTimeFormat("es-AR", { weekday: "short" });
-const LONG_DATE = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" });
+export const LONG_DATE = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" });
 const TIME = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "numeric", hourCycle: "h23" });
 
-const toDate = (isoDate: string) => new Date(`${isoDate}T12:00:00`);
+export const toDate = (isoDate: string) => new Date(`${isoDate}T12:00:00`);
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const formatMm = (value: number | null) => (value === null ? "Sin dato" : `${value.toLocaleString("es-AR")} mm`);
 
@@ -49,7 +49,7 @@ function describeWeather(code: number | null) {
   return "Despejado";
 }
 
-const isRainy = (day: ForecastDay) =>
+export const isRainy = (day: ForecastDay) =>
   (day.probability ?? 0) >= RAIN_PROBABILITY ||
   (day.openMeteoMm ?? 0) >= RAIN_MM ||
   (day.smnMm ?? 0) >= RAIN_MM;
@@ -61,7 +61,7 @@ const modelsDisagree = (day: ForecastDay) =>
   Math.abs(day.smnMm - day.openMeteoMm) >= 5 &&
   Math.max(day.smnMm, day.openMeteoMm) >= 2 * Math.min(day.smnMm, day.openMeteoMm);
 
-function rangeText(day: ForecastDay) {
+export function rangeText(day: ForecastDay) {
   const values = [day.openMeteoMm, day.smnMm].filter((value): value is number => value !== null);
   if (values.length === 0) return "sin dato de milímetros";
   const min = Math.min(...values);

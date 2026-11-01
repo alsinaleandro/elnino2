@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
+import AppNav from "../AppNav";
 import ConfirmButton from "../ConfirmButton";
 import { deleteAccount, logout } from "./actions";
 import BarrioForm from "./BarrioForm";
@@ -126,9 +127,9 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
   } else {
     content = (
       <>
-        <h1>¡Ya sos parte, {neighbor.firstName}!</h1>
+        <h1>Mi barrio</h1>
         <p className={styles.success}>
-          Te sumaste al comité de emergencia de <strong>{neighbor.barrio.name}</strong>
+          Sos parte del comité de emergencia de <strong>{neighbor.barrio.name}</strong>
           {neighbor.barrio.localidad ? ` (${neighbor.barrio.localidad})` : ""}. Muy pronto vas a poder hablar con tus
           vecinos en el chat del barrio.
         </p>
@@ -175,10 +176,8 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
 
   return (
     <div className={styles.page}>
+      <AppNav active="barrio" />
       <main className={styles.card}>
-        <Link href="/" className={styles.back}>
-          ← Volver a la app
-        </Link>
         {errorMessage ? (
           <p className={styles.error} role="alert">
             {errorMessage}

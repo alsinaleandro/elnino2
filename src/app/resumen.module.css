@@ -1,0 +1,117 @@
+/* Tarjetas del Inicio del vecino (Resumen.tsx), tomadas de la maqueta. */
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcome {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #dcfce7;
+  color: #14532d;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+.card:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: #94a3b8;
+  }
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cardHead::after {
+  content: "›";
+  font-size: 1.3rem;
+  line-height: 1;
+  color: #9ca3af;
+}
+
+.cardMain {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.cardSub {
+  font-size: 0.88rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+.muted {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.chipNeutral {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.big {
+  font-size: 1.8rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.up {
+  color: #d03b3b;
+  font-weight: 800;
+}
+
+.down {
+  color: #0a7f0a;
+  font-weight: 800;
+}
+
+.alertCard {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}

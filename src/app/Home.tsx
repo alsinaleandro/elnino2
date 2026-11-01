@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
+import AppNav, { AppHeader, MenuList, SECTIONS, sectionHref, type SectionKey } from "./AppNav";
 import CloudsView from "./CloudsView";
 import ContactView from "./ContactView";
 import HelpView from "./HelpView";
 import InfoGuide from "./InfoGuide";
 import { loadLeaflet, removeMap } from "./leaflet";
 import RainForecast from "./RainForecast";
+import Resumen, { type Member, type RiverSummary } from "./Resumen";
 import RiskBars, {
   getDangerLevel,
   getZoneMeaning,
@@ -33,10 +35,6 @@ const RISK_MAPS = [
 ] as const;
 type RiskMapKey = (typeof RISK_MAPS)[number]["key"];
 type BaseMapKey = "osm" | "satelite";
-
-// Secciones de la app; abre en la portada ("inicio"). La navegación entre ellas se está
-// rediseñando y por ahora no se muestra.
-type TabKey = "inicio" | "riesgo" | "mapa" | "crecida" | "info" | "pronosticos" | "nubes" | "ayuda" | "contacto";
 
 // Colores de las estaciones de bombeo según su clasificación (propiedad `clas`).
 const BOMBEO_COLORS: Record<string, string> = {
@@ -237,8 +235,13 @@ function TrendArrow({ state }: { state: unknown }) {
   );
 }
 
-export default function Home() {
-  const [activeTab] = useState<TabKey>("inicio");
+// La sección viene de la URL (page.tsx). Al cambiar de sección se conserva este componente, así que
+// la ubicación y los datos ya cargados no se vuelven a pedir. `member` es el vecino que ya se sumó a
+// un comité: en vez de la portada ve el resumen de su Inicio.
+type Props = { section: SectionKey; member: Member | null; welcome: boolean };
+
+export default function Home({ section, member, welcome }: Props) {
+  const activeTab = section;
 
   useEffect(() => {
     registerVisit();
@@ -987,11 +990,108 @@ export default function Home() {
     .map((locality) => locality.name)
     .join(" y ");
 
+  const sectionInfo = SECTIONS[activeTab];
+  const initials = member ? `${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`.toUpperCase() : undefined;
+  const riverAltura = toMeters(riskData?.alturaActual);
+
+  const river: RiverSummary = {
+    loading: riskLoading,
+    error: riskError,
+    altura: riverAltura,
+    alerta: toMeters(riskData?.alerta),
+    evacuacion: toMeters(riskData?.evacuacion),
+    tendencia: String(riskData?.tendencia ?? ""),
+    fecha: riskData?.fechaHoraActual ? formatMeasurementDate(riskData.fechaHoraActual) : "",
+  };
+
+  const zoneNote = locationError
+    ? locationError
+    : geoLayer.error
+      ? geoLayer.error
+      : !isRiskMatchResolved || location === null
+        ? "Buscando tu ubicación..."
+        : userLocality
+          ? `Según tu ubicación actual · ${userLocality.name}`
+          : `Tu ubicación actual está fuera del área de los mapas de riesgo (${knownLocalities}).`;
+
+  // Inicio del vecino, Estado y Más son listas de tarjetas: van sin el panel blanco de las demás.
+  const bare = (activeTab === "inicio" && member !== null) || activeTab === "estado" || activeTab === "mas";
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <section className={styles.panel}>
-          {activeTab === "inicio" ? (
+        <AppNav active={sectionInfo.nav} />
+
+        {activeTab === "inicio" && member ? (
+          <AppHeader
+            title={`Hola, ${member.firstName}`}
+            place={member.localidad ? `${member.barrio}, ${member.localidad}` : member.barrio}
+            initials={initials}
+          />
+        ) : activeTab !== "inicio" ? (
+          <AppHeader
+            title={sectionInfo.title}
+            back={"parent" in sectionInfo ? sectionHref(sectionInfo.parent) : undefined}
+            initials={initials}
+          />
+        ) : null}
+
+        <section className={bare ? styles.bare : styles.panel}>
+          {activeTab === "inicio" && member ? (
+            <Resumen
+              member={member}
+              welcome={welcome}
+              rio={riskBarState("rio")}
+              lluvia={riskBarState("lluvia")}
+              zoneNote={zoneNote}
+              river={river}
+            />
+          ) : activeTab === "estado" ? (
+            <MenuList
+              items={[
+                {
+                  href: sectionHref("crecida"),
+                  icon: "🌊",
+                  label: "Río Paraná",
+                  detail:
+                    riverAltura !== null
+                      ? `${riverAltura.toLocaleString("es-AR", { minimumFractionDigits: 2 })} m en Barranqueras${
+                          river.tendencia ? ` · ${river.tendencia.toLowerCase()}` : ""
+                        }`
+                      : "Altura en el hidrómetro de Barranqueras",
+                },
+                {
+                  href: sectionHref("pronosticos"),
+                  icon: "🌧️",
+                  label: "Pronóstico de lluvia",
+                  detail: "Lluvia por día según el SMN y Open-Meteo",
+                },
+                { href: sectionHref("nubes"), icon: "☁️", label: "Nubes", detail: "Imagen satelital de las nubes" },
+              ]}
+            />
+          ) : activeTab === "mas" ? (
+            <>
+              <MenuList
+                items={[
+                  { href: sectionHref("riesgo"), icon: "📍", label: "Tu zona de riesgo", detail: "Según tu ubicación actual" },
+                  {
+                    href: sectionHref("info"),
+                    icon: "📖",
+                    label: "Información",
+                    detail: "Guía de preparación ante inundaciones",
+                  },
+                  { href: sectionHref("ayuda"), icon: "📞", label: "Teléfonos útiles", detail: "Emergencias y organismos" },
+                  { href: sectionHref("contacto"), icon: "✉️", label: "Contactanos", detail: "Mensajes públicos y privados" },
+                ]}
+              />
+              <div className={styles.coverCredits}>
+                <span>Creado por</span>
+                <a href="https://ptpchaco.org.ar" target="_blank" rel="noreferrer">
+                  <Image src={ptpLogo} alt="PTP Chaco" width={132} />
+                </a>
+              </div>
+            </>
+          ) : activeTab === "inicio" ? (
             <div className={styles.cover}>
               <p className={styles.coverKicker}>El fenómeno El Niño trae lluvias e inundaciones</p>
               <h1 className={styles.coverTitle}>Organizate con tus vecinos</h1>

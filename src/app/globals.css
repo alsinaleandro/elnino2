@@ -29,6 +29,18 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* En el celular la barra de navegación (AppNav.tsx) va fija abajo: se deja lugar para que no tape
+   el final de la página. Desde tablet la barra va arriba. */
+body:has([data-app-nav]) {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  body:has([data-app-nav]) {
+    padding-bottom: 0;
+  }
+}
+
 * {
   box-sizing: border-box;
   padding: 0;

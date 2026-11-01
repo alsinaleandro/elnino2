@@ -225,6 +225,13 @@
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
 }
 
+/* Inicio del vecino, Estado y Más: tarjetas y listas sin el panel blanco. */
+.bare {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .panel h2 {
   margin-bottom: 18px;
   font-size: 1.3rem;

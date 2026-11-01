@@ -1,0 +1,207 @@
+/* Navegación, encabezado y listas de la app, tomados de la maqueta (maqueta/maqueta.module.css).
+   Celular primero: la barra va fija abajo; desde 768px pasa arriba. */
+
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Por encima de los controles de Leaflet (z-index 1000). */
+  z-index: 1100;
+  display: flex;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 255, 255, 0.97);
+  border-top: 1px solid #e5e7eb;
+  box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+
+.item {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 2px;
+  border-radius: 12px;
+  color: #6b7280;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.item span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemActive {
+  color: #111827;
+  background: #e0f2fe;
+}
+
+.item:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: -3px;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) {
+  .nav {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    justify-content: center;
+    gap: 6px;
+    padding: 6px;
+    border-top: none;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: none;
+  }
+
+  .item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ---------- Encabezado ---------- */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.headerTitle h1 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.headerPlace {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.back,
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+}
+
+.back {
+  width: 36px;
+  height: 36px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.back:focus-visible,
+.avatar:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+/* ---------- Listas de Estado y Más ---------- */
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.menuItem:last-child {
+  border-bottom: none;
+}
+
+.menuItem:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: -3px;
+}
+
+.menuItem strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.menuItem small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.menuItem > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.menuItem::after {
+  content: "›";
+  font-size: 1.4rem;
+  color: #9ca3af;
+}
+
+.menuIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  font-size: 1.15rem;
+}
