@@ -174,6 +174,12 @@ function migrate(db: DatabaseSync) {
   addColumn(db, "private_messages", "accuracy", "REAL");
   // Barrio donde vive el vecino (NULL mientras no lo eligió).
   addColumn(db, "neighbors", "barrio_id", "INTEGER");
+  // Delegados (Idea 3): desde cuándo es delegado del barrio (NULL si no lo es) y a qué delegado
+  // sigue (NULL si a ninguno; uno solo por vecino). Ninguna pantalla muestra a quién sigue cada
+  // vecino, solo el total de seguidores de cada delegado.
+  addColumn(db, "neighbors", "delegate_since", "TEXT");
+  addColumn(db, "neighbors", "follows_id", "INTEGER");
+  db.exec("CREATE INDEX IF NOT EXISTS neighbors_follows ON neighbors (follows_id)");
 }
 
 function addColumn(db: DatabaseSync, table: string, column: string, definition: string) {

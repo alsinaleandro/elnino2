@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { detectBarrio, findOrCreateBarrio, getBarrio, setNeighborBarrio, type Detection } from "@/lib/barrios";
+import { becomeDelegate, followDelegate, resignDelegate, unfollowDelegate } from "@/lib/delegates";
 import {
   deleteNeighbor,
   endSession,
@@ -68,6 +69,45 @@ export async function saveBarrio(_state: BarrioState, formData: FormData): Promi
   }
   // Con el barrio elegido por primera vez el vecino terminó de sumarse: va a su Inicio.
   redirect(neighbor.barrio ? "/organizate" : "/?bienvenida=1");
+}
+
+// ---------- Delegados (Idea 3) ----------
+
+// Solo para el vecino que ya se sumó (datos completos y barrio elegido).
+async function currentMember() {
+  const neighbor = await getCurrentNeighbor();
+  if (!neighbor?.whatsapp || !neighbor.barrio) redirect("/organizate");
+  return neighbor;
+}
+
+export async function applyAsDelegate() {
+  const neighbor = await currentMember();
+  becomeDelegate(neighbor.id);
+  redirect("/organizate/delegados");
+}
+
+export async function resignAsDelegate() {
+  const neighbor = await currentMember();
+  resignDelegate(neighbor.id);
+  redirect("/organizate/delegados");
+}
+
+export async function follow(formData: FormData) {
+  const neighbor = await currentMember();
+  let failed = false;
+  try {
+    followDelegate(neighbor.id, Number(formData.get("delegado")));
+  } catch (error) {
+    if (!(error instanceof ValidationError)) throw error;
+    failed = true;
+  }
+  redirect(failed ? "/organizate/delegados?error=seguir" : "/organizate/delegados");
+}
+
+export async function unfollow() {
+  const neighbor = await currentMember();
+  unfollowDelegate(neighbor.id);
+  redirect("/organizate/delegados");
 }
 
 export async function logout() {

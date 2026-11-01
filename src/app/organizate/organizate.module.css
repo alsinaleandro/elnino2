@@ -106,6 +106,63 @@
   color: #9ca3af;
 }
 
+.delegateTag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #075985;
+  font-size: 0.65rem;
+}
+
+/* ---------- Delegados ---------- */
+
+.delegateCard,
+.confirmBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.confirmBox {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+
+.following {
+  border: 2px solid #0369a1;
+  background: #f0f9ff;
+}
+
+.delegate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #0369a1;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 /* La caja para escribir queda pegada abajo, encima de la barra de navegación del celular. */
 .chatInput {
   position: sticky;
@@ -331,6 +388,25 @@
   color: #b91c1c;
   font-size: 0.9rem;
   font-weight: 700;
+}
+
+.btnWhatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* Botones chicos de las tarjetas de delegados; va después de los otros para ganarles. */
+.btnSmall {
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
 }
 
 .googleBtn {

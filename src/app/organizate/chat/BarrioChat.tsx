@@ -111,6 +111,7 @@ export default function BarrioChat({ initial, maxLength }: { initial: ChatMessag
             <div key={message.id} className={`${styles.msg} ${message.mine ? styles.msgMine : ""}`}>
               <div className={styles.msgAuthor}>
                 {message.mine ? "Vos" : message.author}
+                {message.delegate ? <span className={styles.delegateTag}>Delegado/a</span> : null}
                 <span className={styles.msgTime}>{formatTime(message.createdAt)}</span>
               </div>
               {message.message}

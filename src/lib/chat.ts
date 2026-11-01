@@ -5,7 +5,15 @@ import { ValidationError } from "./contact";
 import { db } from "./db";
 import { sanitize } from "./moderation";
 
-export type ChatMessage = { id: number; author: string; message: string; createdAt: string; mine: boolean };
+// `delegate`: el autor es delegado del barrio (en el chat se marca con una etiqueta).
+export type ChatMessage = {
+  id: number;
+  author: string;
+  message: string;
+  createdAt: string;
+  mine: boolean;
+  delegate: boolean;
+};
 
 export const MAX_MESSAGE_LENGTH = 500;
 // Mensajes que se mandan al abrir el chat (los más recientes) y como mucho en cada consulta.
@@ -21,6 +29,7 @@ type Row = {
   neighbor_id: number;
   first_name: string;
   last_name: string;
+  delegate_since: string | null;
 };
 
 const toMessage = (row: Row, viewerId: number): ChatMessage => ({
@@ -29,6 +38,7 @@ const toMessage = (row: Row, viewerId: number): ChatMessage => ({
   message: row.message,
   createdAt: row.created_at,
   mine: row.neighbor_id === viewerId,
+  delegate: row.delegate_since !== null,
 });
 
 // Conserva los saltos de línea (como mucho dos seguidos) y junta los espacios.
@@ -43,7 +53,7 @@ export function listMessages(barrioId: number, viewerId: number, afterId = 0) {
   const rows = db
     .prepare(
       `SELECT * FROM (
-         SELECT m.id, m.message, m.created_at, m.neighbor_id, n.first_name, n.last_name
+         SELECT m.id, m.message, m.created_at, m.neighbor_id, n.first_name, n.last_name, n.delegate_since
            FROM chat_messages m
            JOIN neighbors n ON n.id = m.neighbor_id
           WHERE m.barrio_id = ? AND m.id > ?

@@ -18,6 +18,9 @@ export type Neighbor = {
   whatsapp: string | null;
   createdAt: string;
   barrio: { id: number; name: string; localidad: string | null } | null;
+  // Delegados (Idea 3): desde cuándo es delegado (null si no lo es) y a qué delegado sigue.
+  delegateSince: string | null;
+  followsId: number | null;
 };
 
 type NeighborRow = {
@@ -30,6 +33,8 @@ type NeighborRow = {
   barrio_id: number | null;
   barrio_name: string | null;
   barrio_localidad: string | null;
+  delegate_since: string | null;
+  follows_id: number | null;
 };
 
 const toNeighbor = (row: NeighborRow): Neighbor => ({
@@ -43,6 +48,8 @@ const toNeighbor = (row: NeighborRow): Neighbor => ({
     row.barrio_id !== null && row.barrio_name !== null
       ? { id: row.barrio_id, name: row.barrio_name, localidad: row.barrio_localidad }
       : null,
+  delegateSince: row.delegate_since,
+  followsId: row.follows_id,
 });
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -92,8 +99,9 @@ export function updateProfile(id: number, profile: ReturnType<typeof parseProfil
 }
 
 // "Borrar mis datos" (Ley 25.326): se borra el vecino, sus sesiones y sus mensajes del chat del
-// barrio, no queda copia.
+// barrio, no queda copia. Si era delegado, quienes lo seguían quedan sin delegado.
 export function deleteNeighbor(id: number) {
+  db.prepare("UPDATE neighbors SET follows_id = NULL WHERE follows_id = ?").run(id);
   db.prepare("DELETE FROM chat_messages WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM sessions WHERE neighbor_id = ?").run(id);
   db.prepare("DELETE FROM neighbors WHERE id = ?").run(id);
@@ -137,7 +145,7 @@ export async function getCurrentNeighbor() {
   if (!token) return null;
   const row = db
     .prepare(
-      `SELECT n.id, n.email, n.first_name, n.last_name, n.whatsapp, n.created_at,
+      `SELECT n.id, n.email, n.first_name, n.last_name, n.whatsapp, n.created_at, n.delegate_since, n.follows_id,
               b.id AS barrio_id, b.name AS barrio_name, b.localidad AS barrio_localidad
          FROM sessions s
          JOIN neighbors n ON n.id = s.neighbor_id

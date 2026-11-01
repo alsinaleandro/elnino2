@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getBarrioSummary } from "@/lib/chat";
+import { listDelegates } from "@/lib/delegates";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
 import AppNav, { MenuList } from "../AppNav";
@@ -122,13 +123,22 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
             <Link href="/organizate">No cambiarlo</Link>
           </p>
         ) : null}
+        {neighbor.barrio && neighbor.delegateSince ? (
+          <p className={styles.notState}>
+            Sos delegado/a de {neighbor.barrio.name}. Si cambiás de barrio dejás de serlo, y quienes te siguen quedan sin
+            delegado.
+          </p>
+        ) : null}
         <BarrioForm current={neighbor.barrio} />
       </>
     );
   } else {
-    // Menú del barrio, como en la maqueta. Por ahora funciona el chat; novedades, delegados y ayuda
-    // mutua se muestran apagados hasta que estén hechos.
+    // Menú del barrio, como en la maqueta. Funcionan el chat y los delegados; novedades y ayuda mutua
+    // se muestran apagados hasta que estén hechos.
     const summary = getBarrioSummary(neighbor.barrio.id);
+    const delegates = listDelegates(neighbor.barrio.id, neighbor);
+    const followed = delegates.find((delegate) => delegate.followedByMe);
+    const isDelegate = neighbor.delegateSince !== null;
     content = (
       <>
         <h1>Mi barrio</h1>
@@ -136,7 +146,8 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
           <strong>{neighbor.barrio.name}</strong>
           <span>
             Comité de emergencia{neighbor.barrio.localidad ? ` · ${neighbor.barrio.localidad}` : ""} ·{" "}
-            {summary.neighbors} {summary.neighbors === 1 ? "vecino" : "vecinos"}
+            {summary.neighbors} {summary.neighbors === 1 ? "vecino" : "vecinos"} · {delegates.length}{" "}
+            {delegates.length === 1 ? "delegado" : "delegados"}
           </span>
         </div>
         <MenuList
@@ -150,7 +161,18 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
                 ? `${summary.messages} ${summary.messages === 1 ? "mensaje" : "mensajes"} · último de ${summary.lastAuthor}`
                 : "Todavía no hay mensajes",
             },
-            { icon: "🙋", label: "Delegados", detail: "Muy pronto: elegí a tu delegado o postulate" },
+            {
+              href: "/organizate/delegados",
+              icon: "🙋",
+              label: "Delegados",
+              detail: isDelegate
+                ? `Sos delegado/a · ${delegates.length} ${delegates.length === 1 ? "delegado" : "delegados"} en el barrio`
+                : followed
+                  ? `Seguís a ${followed.name}`
+                  : delegates.length > 0
+                    ? `No seguís a ningún delegado · hay ${delegates.length}`
+                    : "Todavía no hay delegados · postulate",
+            },
             { icon: "🤝", label: "Ayuda mutua", detail: "Muy pronto: ofrecé o pedí ayuda" },
           ]}
         />
@@ -159,7 +181,9 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
           <strong>
             {neighbor.firstName} {neighbor.lastName[0]}.
           </strong>{" "}
-          Tu WhatsApp y tu e-mail no los ve ningún vecino.
+          {isDelegate
+            ? "Como sos delegado/a, tu nombre y tu WhatsApp se publican para los vecinos de tu barrio. Tu e-mail no lo ve nadie."
+            : "Tu WhatsApp y tu e-mail no los ve ningún vecino."}
         </p>
         <Link href="/organizate?paso=barrio" className={styles.btnGhost}>
           Cambiar mi barrio

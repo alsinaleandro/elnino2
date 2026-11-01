@@ -5,6 +5,7 @@
 // La app solo propone: el vecino confirma o corrige, porque tiene que ser donde vive.
 import { ValidationError } from "./contact";
 import { db } from "./db";
+import { leaveBarrioRoles } from "./delegates";
 import { geometryContainsPoint, type GeoJsonMultiPolygon } from "./geo";
 import { sanitize } from "./moderation";
 import { lookupOsm, type OsmBarrio } from "./overpass";
@@ -175,6 +176,11 @@ export function findOrCreateBarrio(nameInput: unknown, localidadInput: unknown, 
 
 // Guarda el barrio del vecino. En los barrios sin polígono se suma su punto (sin decir de quién es).
 export function setNeighborBarrio(neighborId: number, barrio: Barrio, point: { lat: number; lon: number } | null) {
+  const current = db.prepare("SELECT barrio_id FROM neighbors WHERE id = ?").get(neighborId) as
+    | { barrio_id: number | null }
+    | undefined;
+  if (current?.barrio_id != null && current.barrio_id !== barrio.id) leaveBarrioRoles(neighborId);
+
   db.prepare("UPDATE neighbors SET barrio_id = ?, updated_at = ? WHERE id = ?").run(
     barrio.id,
     new Date().toISOString(),

@@ -38,7 +38,7 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 **Implementación** (en la rama `test`, página `/organizate`)
 - Etapa 1, hecha (31/10/2026): pantalla de aceptación, ingreso con Google (sin librerías, `src/lib/google.ts`), datos del vecino, cerrar sesión y borrar mis datos. El ingreso con e-mail quedó para más adelante.
 - Etapa 2, hecha (31/10/2026): detección del barrio con los pasos 1 a 4 de arriba (`src/lib/barrios.ts`, `src/lib/overpass.ts`). Se puede cambiar el barrio después.
-- Etapa 3, pendiente: chat del barrio.
+- Etapa 3, hecha (01/11/2026): chat del barrio (`/organizate/chat`, `src/lib/chat.ts`). Mensajes en la tabla `chat_messages`; la página consulta los nuevos cada 5 segundos. Insultos tapados con el filtro de Contactanos, hasta 500 caracteres y 10 mensajes por minuto por vecino. Al borrar los datos se borran también los mensajes del vecino.
 
 **Puntos a definir más adelante**
 - Diferencia entre dónde está el vecino ahora y dónde vive: si se registra desde el trabajo, el GPS daría otro barrio. Conviene que la app proponga el barrio detectado y el usuario lo confirme o lo corrija.
@@ -191,8 +191,15 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 - El administrador de la base de datos sí puede verlo.
 - Por eso, el texto de la pantalla inicial dice que **ningún vecino ni delegado** puede ver a quién seguís, y no promete que el PTP no pueda saberlo.
 
+**Implementación** (en la rama `test`, página `/organizate/delegados`, hecha el 01/11/2026)
+- Dos columnas en `neighbors`: `delegate_since` (desde cuándo es delegado) y `follows_id` (a quién sigue; una sola columna, así cada vecino sigue a uno solo). Lógica en `src/lib/delegates.ts`.
+- Antes de postularse, el vecino ve qué datos se publican y confirma. Cada delegado muestra nombre, WhatsApp (con enlace a wa.me), seguidores y desde cuándo es delegado. El vecino solo ve a quién sigue él mismo.
+- Si un delegado renuncia, cambia de barrio o borra sus datos, sus seguidores quedan sin delegado. Al cambiar de barrio, el vecino también deja de seguir al delegado del barrio anterior.
+- En el chat del barrio, los mensajes de los delegados llevan la etiqueta "Delegado/a".
+- Pendiente: el panel del PTP con los datos de cada delegado y sus seguidores.
+
 **Puntos a definir más adelante**
-- Un delegado que se muda o deja de participar: ¿deja de serlo automáticamente después de un tiempo sin actividad?
+- Un delegado que deja de participar: ¿deja de serlo automáticamente después de un tiempo sin actividad? (Si se muda de barrio en la app, ya deja de serlo.)
 - ¿Pueden postularse vecinos que viven en un barrio pero participan en otro?
 
 ### Idea 4: Plan familiar de emergencia, paso a paso
