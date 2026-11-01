@@ -371,6 +371,18 @@
   color: #6b7280;
 }
 
+/* Pie del Inicio del vecino (MiCuenta.tsx): va sobre el fondo gris, sin el panel blanco. */
+.account {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
 .details {
   display: flex;
   flex-direction: column;

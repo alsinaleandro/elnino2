@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { LOCALITIES, type LocalityId } from "@/lib/localities";
 import ptpLogo from "../../public/images/logo-ptp-chaco.png";
 import AppNav, { AppHeader, MenuList, SECTIONS, sectionHref, type SectionKey } from "./AppNav";
@@ -237,10 +237,10 @@ function TrendArrow({ state }: { state: unknown }) {
 
 // La sección viene de la URL (page.tsx). Al cambiar de sección se conserva este componente, así que
 // la ubicación y los datos ya cargados no se vuelven a pedir. `member` es el vecino que ya se sumó a
-// un comité: en vez de la portada ve el resumen de su Inicio.
-type Props = { section: SectionKey; member: Member | null; welcome: boolean };
+// un comité: en vez de la portada ve el resumen de su Inicio, con `account` al pie.
+type Props = { section: SectionKey; member: Member | null; welcome: boolean; account: ReactNode };
 
-export default function Home({ section, member, welcome }: Props) {
+export default function Home({ section, member, welcome, account }: Props) {
   const activeTab = section;
 
   useEffect(() => {
@@ -1038,14 +1038,17 @@ export default function Home({ section, member, welcome }: Props) {
 
         <section className={bare ? styles.bare : styles.panel}>
           {activeTab === "inicio" && member ? (
-            <Resumen
-              member={member}
-              welcome={welcome}
-              rio={riskBarState("rio")}
-              lluvia={riskBarState("lluvia")}
-              zoneNote={zoneNote}
-              river={river}
-            />
+            <>
+              <Resumen
+                member={member}
+                welcome={welcome}
+                rio={riskBarState("rio")}
+                lluvia={riskBarState("lluvia")}
+                zoneNote={zoneNote}
+                river={river}
+              />
+              {account}
+            </>
           ) : activeTab === "estado" ? (
             <MenuList
               items={[

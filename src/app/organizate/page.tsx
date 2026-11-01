@@ -9,9 +9,7 @@ import { newsSummary } from "@/lib/news";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
 import AppNav, { MenuList } from "../AppNav";
-import ConfirmButton from "../ConfirmButton";
 import { timeAgo } from "../format";
-import { deleteAccount, logout } from "./actions";
 import BarrioForm from "./BarrioForm";
 import DatosInfo from "./DatosInfo";
 import { LoginForm, ResetForm, SignupForm } from "./EmailForms";
@@ -284,25 +282,6 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
         <Link href="/organizate?paso=barrio" className={styles.btnGhost}>
           Cambiar mi barrio
         </Link>
-
-        <details className={styles.details}>
-          <summary>Cómo usamos tus datos</summary>
-          <DatosInfo />
-        </details>
-
-        <form action={logout} className={styles.form}>
-          <button type="submit" className={styles.btnSecondary}>
-            Cerrar sesión
-          </button>
-        </form>
-        <form action={deleteAccount} className={styles.form}>
-          <ConfirmButton
-            className={styles.btnDanger}
-            message="¿Borrar tus datos y salir del comité? No se puede deshacer."
-          >
-            Borrar mis datos y salir del comité
-          </ConfirmButton>
-        </form>
       </>
     );
   }
