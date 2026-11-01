@@ -6,6 +6,7 @@ import { getCurrentNeighbor } from "@/lib/neighbors";
 import AppNav, { AppHeader } from "../../AppNav";
 import ConfirmButton from "../../ConfirmButton";
 import { deleteHelp, resolveHelp } from "../actions";
+import { timeAgo } from "../../format";
 import styles from "../organizate.module.css";
 import HelpForm from "./HelpForm";
 
@@ -19,16 +20,6 @@ const FILTERS: Array<{ key: HelpKind | null; label: string }> = [
   { key: "necesito", label: "Necesitan" },
   { key: "ofrezco", label: "Ofrecen" },
 ];
-
-function timeAgo(iso: string) {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 1) return "recién";
-  if (minutes < 60) return `hace ${minutes} min`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `hace ${hours} h`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? "hace 1 día" : `hace ${days} días`;
-}
 
 export default async function AyudaPage({ searchParams }: PageProps<"/organizate/ayuda">) {
   const { ver, publicar } = await searchParams;

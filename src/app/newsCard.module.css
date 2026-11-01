@@ -1,0 +1,71 @@
+/* Tarjeta de una novedad (NewsCard.tsx). */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tagPtp,
+.tagDelegate {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.tagPtp {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.tagDelegate {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.when {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.title {
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.eventPast {
+  background: #f1f5f9;
+  color: #64748b;
+}

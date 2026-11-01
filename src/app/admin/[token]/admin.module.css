@@ -196,3 +196,91 @@
   background: #fef2f2;
   color: #b91c1c;
 }
+
+/* ---------- Secciones del panel y novedades ---------- */
+
+.sections {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f3f4f6;
+}
+
+.section {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 9px;
+  color: #374151;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.sectionActive {
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.newsForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 28px;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.newsForm h2,
+.listTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+.listTitle {
+  margin-bottom: 12px;
+}
+
+.newsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.newsField select {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.formError,
+.formSuccess {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.formError {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.formSuccess {
+  background: #dcfce7;
+  color: #166534;
+}

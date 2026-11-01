@@ -53,8 +53,10 @@ export default function DatosInfo() {
 
       <h2>Novedades</h2>
       <p>
-        Vas a ver un panel de novedades publicadas por el <strong>PTP Chaco</strong>. No son comunicados del gobierno ni de
-        organismos del Estado. Para alertas oficiales, seguí siempre al SMN, Defensa Civil y tu municipio.
+        Vas a ver un panel de novedades publicadas por el <strong>PTP Chaco</strong> y por los{" "}
+        <strong>delegados de tu barrio</strong> (por ejemplo, para anunciar reuniones o asambleas). No son comunicados
+        del gobierno ni de organismos del Estado. Para alertas oficiales, seguí siempre al SMN, Defensa Civil y tu
+        municipio.
       </p>
 
       <h2>Quién es responsable de tus datos</h2>

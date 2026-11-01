@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { detectBarrio, findOrCreateBarrio, getBarrio, setNeighborBarrio, type Detection } from "@/lib/barrios";
 import { becomeDelegate, followDelegate, resignDelegate, unfollowDelegate } from "@/lib/delegates";
 import { addHelpPost, deleteHelpPost, resolveHelpPost } from "@/lib/help";
+import { addDelegateNews, deleteOwnNews } from "@/lib/news";
 import {
   deleteNeighbor,
   endSession,
@@ -140,6 +141,35 @@ export async function deleteHelp(formData: FormData) {
   const neighbor = await currentMember();
   deleteHelpPost(neighbor.id, Number(formData.get("publicacion")));
   redirect("/organizate/ayuda");
+}
+
+// ---------- Novedades (las de los delegados; las del PTP van por /admin) ----------
+
+export type NewsState = { error: string | null };
+
+const newsInput = (formData: FormData) => ({
+  title: formData.get("titulo"),
+  message: formData.get("texto"),
+  eventDate: formData.get("fecha"),
+  eventTime: formData.get("hora"),
+  place: formData.get("lugar"),
+});
+
+export async function publishNews(_state: NewsState, formData: FormData): Promise<NewsState> {
+  const neighbor = await currentMember();
+  try {
+    addDelegateNews(neighbor.id, newsInput(formData));
+  } catch (error) {
+    if (error instanceof ValidationError) return { error: error.message };
+    throw error;
+  }
+  redirect("/organizate/novedades");
+}
+
+export async function deleteMyNews(formData: FormData) {
+  const neighbor = await currentMember();
+  deleteOwnNews(neighbor.id, Number(formData.get("novedad")));
+  redirect("/organizate/novedades");
 }
 
 export async function logout() {

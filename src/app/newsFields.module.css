@@ -1,0 +1,50 @@
+/* Campos de una novedad (NewsFields.tsx). */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.field input,
+.field textarea {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #111827;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.event legend {
+  padding: 0 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.eventRow {
+  display: flex;
+  gap: 10px;
+}

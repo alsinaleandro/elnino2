@@ -3,10 +3,12 @@ import Link from "next/link";
 import { getBarrioSummary } from "@/lib/chat";
 import { listDelegates } from "@/lib/delegates";
 import { countHelpPosts } from "@/lib/help";
+import { newsSummary } from "@/lib/news";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
 import AppNav, { MenuList } from "../AppNav";
 import ConfirmButton from "../ConfirmButton";
+import { timeAgo } from "../format";
 import { deleteAccount, logout } from "./actions";
 import BarrioForm from "./BarrioForm";
 import DatosInfo from "./DatosInfo";
@@ -134,9 +136,9 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
       </>
     );
   } else {
-    // Menú del barrio, como en la maqueta. Funcionan el chat, los delegados y la ayuda mutua;
-    // novedades se muestra apagado hasta que esté hecho.
+    // Menú del barrio, como en la maqueta: novedades, chat, delegados y ayuda mutua.
     const summary = getBarrioSummary(neighbor.barrio.id);
+    const news = newsSummary(neighbor.barrio.id);
     const help = countHelpPosts(neighbor.barrio.id);
     const delegates = listDelegates(neighbor.barrio.id, neighbor);
     const followed = delegates.find((delegate) => delegate.followedByMe);
@@ -154,7 +156,14 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
         </div>
         <MenuList
           items={[
-            { icon: "📢", label: "Novedades", detail: "Muy pronto: novedades del PTP Chaco" },
+            {
+              href: "/organizate/novedades",
+              icon: "📢",
+              label: "Novedades",
+              detail: news.lastAt
+                ? `${news.count} ${news.count === 1 ? "novedad" : "novedades"} · la última ${timeAgo(news.lastAt)}`
+                : "Del PTP Chaco y de los delegados del barrio",
+            },
             {
               href: "/organizate/chat",
               icon: "💬",

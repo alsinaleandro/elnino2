@@ -285,6 +285,22 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 - ¿Se pide la ubicación de la casa? El domicilio se descartó en la Idea 1; sin él, el delegado tendría que contactar a la familia por WhatsApp.
   - Posible solución (27/10/2026): la familia que indica que va a necesitar ayuda puede permitir el contacto directo por WhatsApp o por llamada.
 
+### Idea 8: Novedades del barrio (PTP Chaco y delegados)
+
+**Objetivo:** un panel de novedades por barrio. Además del PTP Chaco, publican los delegados del barrio, por ejemplo para anunciar reuniones o asambleas (pedido el 01/11/2026).
+
+**Implementación** (en la rama `test`, hecha el 01/11/2026)
+- Vecinos: Mi barrio → Novedades (`/organizate/novedades`). Los delegados ven "＋ Publicar una novedad", solo para su barrio.
+- PTP Chaco: panel de administración, `/admin/<token>/novedades`. Publica para **todos los barrios** o para uno; ve todas las novedades, también las de los delegados, y puede borrar cualquiera.
+- Cada novedad: título, texto y, si es una reunión o asamblea, fecha, hora y lugar (opcionales). Las reuniones pasadas se marcan "ya pasó".
+- Etiqueta "PTP Chaco" o "Delegado/a · nombre". La página aclara que no son comunicados oficiales.
+- Tabla `news_posts`, lógica en `src/lib/news.ts`. Hasta 5 novedades por día por delegado; insultos tapados.
+- Las de un delegado se ven mientras siga siendo delegado de ese barrio (si renuncia o se muda, dejan de verse). Al borrar sus datos, se borran.
+
+**Puntos a definir más adelante**
+- ¿Avisar a los vecinos cuando hay una novedad nueva (se conecta con la Idea 5)?
+- ¿Las novedades viejas vencen, o quedan siempre (hoy se muestran las últimas 50)?
+
 ### Ideas descartadas
 - **Simulador "si el río llega a X metros, ¿se inunda mi casa?"** con las capas de cotas del terreno (descartada el 27/10/2026): el mapa de cotas de la ciudad es muy inexacto y no es fuente oficial.
 

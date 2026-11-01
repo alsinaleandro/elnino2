@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { countMessages, isAdminToken, listAdminMessages, type Filter } from "@/lib/admin";
 import { mapLink, whatsappLink } from "@/lib/links";
 import { moderateMessage } from "./actions";
+import AdminNav from "./AdminNav";
 import ConfirmButton from "../../ConfirmButton";
 import styles from "./admin.module.css";
 
@@ -45,6 +46,7 @@ export default async function AdminPage({ params, searchParams }: PageProps<"/ad
 
   return (
     <main className={styles.page}>
+      <AdminNav token={token} active="mensajes" />
       <header className={styles.header}>
         <h1>Mensajes públicos</h1>
         <p>

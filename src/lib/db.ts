@@ -182,6 +182,27 @@ function migrate(db: DatabaseSync) {
     );
     CREATE INDEX IF NOT EXISTS help_posts_barrio ON help_posts (barrio_id, created_at);
     CREATE INDEX IF NOT EXISTS help_posts_neighbor ON help_posts (neighbor_id);
+
+    -- Novedades de cada barrio. Las publica el PTP Chaco (desde /admin; "barrio_id" NULL = para
+    -- todos los barrios) o un delegado para su propio barrio ("neighbor_id"). Pueden anunciar una
+    -- reunión o asamblea: "event_at" es la fecha (AAAA-MM-DD), o fecha y hora de Argentina
+    -- (AAAA-MM-DDTHH:MM), y "place" el
+    -- lugar. Las de un delegado se muestran mientras siga siendo delegado de ese barrio, y se borran
+    -- al borrar sus datos.
+    CREATE TABLE IF NOT EXISTS news_posts (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      barrio_id        INTEGER,
+      author_kind      TEXT NOT NULL CHECK (author_kind IN ('ptp', 'delegado')),
+      neighbor_id      INTEGER,
+      title            TEXT NOT NULL,
+      message          TEXT NOT NULL,
+      original_message TEXT NOT NULL,
+      event_at         TEXT,
+      place            TEXT,
+      created_at       TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS news_posts_barrio ON news_posts (barrio_id, id);
+    CREATE INDEX IF NOT EXISTS news_posts_neighbor ON news_posts (neighbor_id);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");
