@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getBarrioSummary } from "@/lib/chat";
 import { isGoogleConfigured } from "@/lib/google";
 import { getCurrentNeighbor } from "@/lib/neighbors";
-import AppNav from "../AppNav";
+import AppNav, { MenuList } from "../AppNav";
 import ConfirmButton from "../ConfirmButton";
 import { deleteAccount, logout } from "./actions";
 import BarrioForm from "./BarrioForm";
@@ -125,32 +126,44 @@ export default async function OrganizatePage({ searchParams }: PageProps<"/organ
       </>
     );
   } else {
+    // Menú del barrio, como en la maqueta. Por ahora funciona el chat; novedades, delegados y ayuda
+    // mutua se muestran apagados hasta que estén hechos.
+    const summary = getBarrioSummary(neighbor.barrio.id);
     content = (
       <>
         <h1>Mi barrio</h1>
-        <p className={styles.success}>
-          Sos parte del comité de emergencia de <strong>{neighbor.barrio.name}</strong>
-          {neighbor.barrio.localidad ? ` (${neighbor.barrio.localidad})` : ""}. Muy pronto vas a poder hablar con tus
-          vecinos en el chat del barrio.
+        <div className={styles.barrioHead}>
+          <strong>{neighbor.barrio.name}</strong>
+          <span>
+            Comité de emergencia{neighbor.barrio.localidad ? ` · ${neighbor.barrio.localidad}` : ""} ·{" "}
+            {summary.neighbors} {summary.neighbors === 1 ? "vecino" : "vecinos"}
+          </span>
+        </div>
+        <MenuList
+          items={[
+            { icon: "📢", label: "Novedades", detail: "Muy pronto: novedades del PTP Chaco" },
+            {
+              href: "/organizate/chat",
+              icon: "💬",
+              label: "Chat del barrio",
+              detail: summary.lastAuthor
+                ? `${summary.messages} ${summary.messages === 1 ? "mensaje" : "mensajes"} · último de ${summary.lastAuthor}`
+                : "Todavía no hay mensajes",
+            },
+            { icon: "🙋", label: "Delegados", detail: "Muy pronto: elegí a tu delegado o postulate" },
+            { icon: "🤝", label: "Ayuda mutua", detail: "Muy pronto: ofrecé o pedí ayuda" },
+          ]}
+        />
+        <p className={styles.muted}>
+          En el chat te ven como{" "}
+          <strong>
+            {neighbor.firstName} {neighbor.lastName[0]}.
+          </strong>{" "}
+          Tu WhatsApp y tu e-mail no los ve ningún vecino.
         </p>
         <Link href="/organizate?paso=barrio" className={styles.btnGhost}>
           Cambiar mi barrio
         </Link>
-
-        <h2>Tus datos</h2>
-        <p className={styles.muted}>
-          En el chat del barrio te van a ver como{" "}
-          <strong>
-            {neighbor.firstName} {neighbor.lastName[0]}.
-          </strong>{" "}
-          E-mail: {neighbor.email}.
-        </p>
-        <ProfileForm
-          firstName={neighbor.firstName}
-          lastName={neighbor.lastName}
-          whatsapp={neighbor.whatsapp}
-          submitLabel="Guardar cambios"
-        />
 
         <details className={styles.details}>
           <summary>Cómo usamos tus datos</summary>

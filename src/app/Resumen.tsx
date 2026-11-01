@@ -179,10 +179,10 @@ export default function Resumen({ member, welcome, rio, lluvia, zoneNote, river 
 
       <RainCard />
 
-      <Link href="/organizate" className={styles.card}>
+      <Link href="/organizate/chat" className={styles.card}>
         <span className={styles.cardHead}>Tu barrio · {member.barrio}</span>
-        <span className={styles.cardMain}>👥 Comité de emergencia</span>
-        <span className={styles.cardSub}>El chat con los vecinos de tu barrio llega muy pronto.</span>
+        <span className={styles.cardMain}>💬 Chat del barrio</span>
+        <span className={styles.cardSub}>Hablá con los vecinos de tu comité de emergencia.</span>
       </Link>
     </div>
   );

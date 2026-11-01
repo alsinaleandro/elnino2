@@ -194,6 +194,14 @@
   color: #9ca3af;
 }
 
+.menuItemDisabled {
+  opacity: 0.55;
+}
+
+.menuItemDisabled::after {
+  content: none;
+}
+
 .menuIcon {
   display: inline-flex;
   align-items: center;

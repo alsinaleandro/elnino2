@@ -145,21 +145,33 @@ export function AppHeader({
   );
 }
 
-// Lista de opciones de Estado y Más.
-export function MenuList({ items }: { items: Array<{ href: string; icon: string; label: string; detail: string }> }) {
+// Lista de opciones de Estado, Más y Mi barrio. Sin `href`, la opción se muestra apagada (todavía
+// no está disponible).
+export function MenuList({ items }: { items: Array<{ href?: string; icon: string; label: string; detail: string }> }) {
   return (
     <div className={styles.menu}>
-      {items.map((item) => (
-        <Link key={item.href} href={item.href} className={styles.menuItem}>
-          <span className={styles.menuIcon} aria-hidden="true">
-            {item.icon}
-          </span>
-          <div>
-            <strong>{item.label}</strong>
-            <small>{item.detail}</small>
+      {items.map((item) => {
+        const content = (
+          <>
+            <span className={styles.menuIcon} aria-hidden="true">
+              {item.icon}
+            </span>
+            <div>
+              <strong>{item.label}</strong>
+              <small>{item.detail}</small>
+            </div>
+          </>
+        );
+        return item.href ? (
+          <Link key={item.label} href={item.href} className={styles.menuItem}>
+            {content}
+          </Link>
+        ) : (
+          <div key={item.label} className={`${styles.menuItem} ${styles.menuItemDisabled}`}>
+            {content}
           </div>
-        </Link>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -149,6 +149,21 @@ function migrate(db: DatabaseSync) {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS barrio_points_barrio ON barrio_points (barrio_id);
+
+    -- Chat del barrio: público para los vecinos del comité, sin mensajes privados. Se muestra el
+    -- nombre y la inicial del apellido del autor (se leen de neighbors). "message" es el texto
+    -- saneado y "original_message" lo que escribió el vecino. Al borrar un vecino se borran sus
+    -- mensajes.
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      barrio_id        INTEGER NOT NULL,
+      neighbor_id      INTEGER NOT NULL,
+      message          TEXT NOT NULL,
+      original_message TEXT NOT NULL,
+      created_at       TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS chat_messages_barrio ON chat_messages (barrio_id, id);
+    CREATE INDEX IF NOT EXISTS chat_messages_neighbor ON chat_messages (neighbor_id, created_at);
   `);
 
   addColumn(db, "public_messages", "hidden", "INTEGER NOT NULL DEFAULT 0");

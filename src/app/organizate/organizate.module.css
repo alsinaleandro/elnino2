@@ -43,12 +43,119 @@
   color: #1d4ed8;
 }
 
-.back {
-  align-self: flex-start;
+/* ---------- Mi barrio y chat ---------- */
+
+.barrioHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0c4a6e, #0369a1);
+  color: #ffffff;
+}
+
+.barrioHead strong {
+  font-size: 1.2rem;
+}
+
+.barrioHead span {
   font-size: 0.85rem;
-  font-weight: 700;
-  color: #4b5563;
-  text-decoration: none;
+  opacity: 0.9;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msg {
+  align-self: flex-start;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msgMine {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px 14px;
+  background: #dcfce7;
+  border-color: #bbf7d0;
+}
+
+.msgAuthor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #0369a1;
+}
+
+.msgTime {
+  margin-left: auto;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+/* La caja para escribir queda pegada abajo, encima de la barra de navegación del celular. */
+.chatInput {
+  position: sticky;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.1);
+}
+
+@media (min-width: 768px) {
+  .chatInput {
+    bottom: 16px;
+  }
+}
+
+.chatInput input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.chatInput:focus-within {
+  border-color: #38bdf8;
+}
+
+.btnSend {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btnSend:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .notState {
