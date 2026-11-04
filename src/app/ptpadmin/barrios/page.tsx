@@ -201,6 +201,9 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
                             {barrio.geometry || barrio.center ? (
                               <VerEnMapa barrioId={barrio.id} className={styles.button} />
                             ) : null}
+                            <Link href={`/ptpadmin/barrios/${barrio.id}/chat`} className={styles.button}>
+                              Chat ({barrio.messages})
+                            </Link>
                             {barrio.neighbors === 0 ? (
                               <form action={deleteBarrioAdmin}>
                                 <input type="hidden" name="id" value={barrio.id} />

@@ -254,24 +254,28 @@ export type AdminBarrio = Barrio & {
   geometry: GeoJsonMultiPolygon | null;
   center: { lat: number; lon: number } | null;
   neighbors: number;
+  // Mensajes del chat del barrio.
+  messages: number;
 };
 
 export function listBarriosForAdmin(): AdminBarrio[] {
   const rows = db
     .prepare(
       `SELECT b.id, b.name, b.localidad, b.source, b.geometry, b.center_lat, b.center_lon,
-              (SELECT COUNT(*) FROM neighbors n WHERE n.barrio_id = b.id) AS neighbors
+              (SELECT COUNT(*) FROM neighbors n WHERE n.barrio_id = b.id) AS neighbors,
+              (SELECT COUNT(*) FROM chat_messages m WHERE m.barrio_id = b.id) AS messages
          FROM barrios b
         ORDER BY b.localidad IS NULL, b.localidad COLLATE NOCASE, b.name COLLATE NOCASE`,
     )
     .all() as Array<
-    BarrioRow & { geometry: string | null; center_lat: number | null; center_lon: number | null; neighbors: number }
+    BarrioRow & { geometry: string | null; center_lat: number | null; center_lon: number | null; neighbors: number; messages: number }
   >;
   return rows.map((row) => ({
     ...toBarrio(row),
     geometry: row.geometry ? (JSON.parse(row.geometry) as GeoJsonMultiPolygon) : null,
     center: row.center_lat !== null && row.center_lon !== null ? { lat: row.center_lat, lon: row.center_lon } : null,
     neighbors: row.neighbors,
+    messages: row.messages,
   }));
 }
 

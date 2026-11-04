@@ -110,3 +110,29 @@ export function getBarrioSummary(barrioId: number) {
     lastAuthor: last ? `${last.first_name} ${last.last_name[0] ?? ""}.` : null,
   };
 }
+
+// ---------- Panel de administración (/ptpadmin/barrios/[id]/chat) ----------
+
+export type AdminChatMessage = Omit<ChatMessage, "mine"> & { originalMessage: string };
+
+// Solo lectura: los últimos mensajes del barrio, del más viejo al más nuevo, con el texto original
+// cuando el filtro tapó palabras.
+export function listMessagesForAdmin(barrioId: number, limit = 300) {
+  const rows = db
+    .prepare(
+      `SELECT * FROM (
+         SELECT m.id, m.message, m.original_message, m.created_at, m.neighbor_id, n.first_name, n.last_name,
+                n.delegate_since
+           FROM chat_messages m
+           JOIN neighbors n ON n.id = m.neighbor_id
+          WHERE m.barrio_id = ?
+          ORDER BY m.id DESC
+          LIMIT ?
+       ) ORDER BY id`,
+    )
+    .all(barrioId, limit) as Array<Row & { original_message: string }>;
+  return rows.map((row): AdminChatMessage => {
+    const { id, author, message, createdAt, delegate } = toMessage(row, 0);
+    return { id, author, message, createdAt, delegate, originalMessage: row.original_message };
+  });
+}

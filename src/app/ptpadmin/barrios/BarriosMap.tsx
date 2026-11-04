@@ -39,11 +39,13 @@ const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${c
 
 function popupHtml(barrio: AdminBarrio) {
   const neighbors = `${barrio.neighbors} ${barrio.neighbors === 1 ? "vecino" : "vecinos"}`;
+  const messages = `${barrio.messages} ${barrio.messages === 1 ? "mensaje" : "mensajes"}`;
   return (
     `<strong>${escapeHtml(barrio.name)}</strong><br>` +
     `${barrio.localidad ? `${escapeHtml(barrio.localidad)}<br>` : ""}` +
     `${neighbors}<br>` +
-    `<small>${sourceInfo(barrio).label}</small>`
+    `<small>${sourceInfo(barrio).label}</small><br>` +
+    `<a href="/ptpadmin/barrios/${barrio.id}/chat">Ver el chat (${messages})</a>`
   );
 }
 
@@ -63,7 +65,7 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
   // Mientras corre una carga la página se refresca sola: el mapa se vuelve a armar (y pierde el zoom)
   // solo si cambiaron los barrios.
   const signature = barrios
-    .map((barrio) => `${barrio.id}:${barrio.source}:${barrio.neighbors}:${barrio.name}:${barrio.geometry ? 1 : 0}`)
+    .map((barrio) => `${barrio.id}:${barrio.source}:${barrio.neighbors}:${barrio.messages}:${barrio.name}:${barrio.geometry ? 1 : 0}`)
     .join("|");
   const [shown, setShown] = useState({ signature, barrios });
   if (shown.signature !== signature) setShown({ signature, barrios });
