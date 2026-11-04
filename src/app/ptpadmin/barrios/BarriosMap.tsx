@@ -5,6 +5,7 @@ import type { AdminBarrio } from "@/lib/barrios";
 import { loadLeaflet, removeMap } from "../../leaflet";
 import { createBarrioAdmin, type DrawnBarrioState } from "../actions";
 import styles from "../admin.module.css";
+import { BARRIO_FOCUS_EVENT } from "./VerEnMapa";
 
 // Mapa de los barrios cargados en la base: los polígonos de OpenStreetMap (azul), los dibujados a mano
 // desde el panel (verde) y los barrios sin polígono como un punto en su centro: violeta si son un
@@ -49,7 +50,7 @@ function popupHtml(barrio: AdminBarrio) {
 export default function BarriosMap({ barrios, localidades }: { barrios: AdminBarrio[]; localidades: string[] }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<{ L: any; map: any; draft: any } | null>(null);
+  const mapRef = useRef<{ L: any; map: any; draft: any; focus: Map<number, () => void> } | null>(null);
   const drawingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -90,6 +91,18 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
     }
   }, [drawing, ready]);
 
+  // "Ver en el mapa" de la lista: se centra en el barrio, abre su popup y trae el mapa a la vista.
+  useEffect(() => {
+    const onFocus = (event: Event) => {
+      const focus = mapRef.current?.focus.get(Number((event as CustomEvent).detail));
+      if (!focus) return;
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      focus();
+    };
+    window.addEventListener(BARRIO_FOCUS_EVENT, onFocus);
+    return () => window.removeEventListener(BARRIO_FOCUS_EVENT, onFocus);
+  }, []);
+
   useEffect(() => {
     const { barrios } = shown;
     let cancelled = false;
@@ -110,7 +123,7 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
         // toque siguiente se pierde) y el toque sigue al mapa, que agrega el vértice.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const showPopup = (barrio: AdminBarrio) => (event: any) => {
-          if (!drawingRef.current) L.popup({ maxWidth: 260 }).setLatLng(event.latlng).setContent(popupHtml(barrio)).openOn(map);
+          if (!drawingRef.current) openPopup(barrio, event.latlng);
         };
 
         // Las capas se arman primero y se agregan después de fijar la vista. Agregadas antes, Leaflet las
@@ -118,6 +131,9 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
         // que el renderer que comparten esté listo ("Cannot read properties of undefined (reading 'min')").
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const layers: any[] = [];
+        const focus = new Map<number, () => void>();
+        const openPopup = (barrio: AdminBarrio, latlng: unknown) =>
+          L.popup({ maxWidth: 260 }).setLatLng(latlng).setContent(popupHtml(barrio)).openOn(map);
         const bounds = L.latLngBounds([]);
         for (const barrio of barrios) {
           const info = sourceInfo(barrio);
@@ -134,6 +150,10 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
               .bindTooltip(barrio.name, { sticky: true });
             layers.push(layer);
             bounds.extend(layer.getBounds());
+            focus.set(barrio.id, () => {
+              map.fitBounds(layer.getBounds(), { maxZoom: 17, padding: [30, 30] });
+              openPopup(barrio, layer.getBounds().getCenter());
+            });
           } else if (barrio.center) {
             const marker = L.circleMarker([barrio.center.lat, barrio.center.lon], {
               radius: 7,
@@ -146,6 +166,11 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
               .bindTooltip(barrio.name);
             layers.push(marker);
             bounds.extend([barrio.center.lat, barrio.center.lon]);
+            const center = [barrio.center.lat, barrio.center.lon];
+            focus.set(barrio.id, () => {
+              map.setView(center, 16);
+              openPopup(barrio, center);
+            });
           }
         }
 
@@ -161,7 +186,7 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
           setVertices((current) => [...current, vertex]);
         });
 
-        mapRef.current = { L, map, draft: L.layerGroup().addTo(map) };
+        mapRef.current = { L, map, draft: L.layerGroup().addTo(map), focus };
         setReady(true);
       })
       .catch((reason) => {

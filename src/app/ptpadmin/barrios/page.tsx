@@ -10,6 +10,7 @@ import AdminNav from "../AdminNav";
 import styles from "../admin.module.css";
 import BarriosMap from "./BarriosMap";
 import ImportRefresher from "./ImportRefresher";
+import VerEnMapa from "./VerEnMapa";
 
 // Barrios cargados en la base (Idea 1): los polígonos que se usan para detectar el barrio de cada
 // vecino y los que escribieron los vecinos. Desde acá se cargan de una vez todos los barrios de una
@@ -149,51 +150,77 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
       {shown.length === 0 ? (
         <p className={styles.empty}>Todavía no hay barrios cargados. Cargá los de una localidad con el formulario.</p>
       ) : (
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Barrio</th>
-              <th>Vecinos</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((barrio) => (
-              <tr key={barrio.id}>
-                <td>
-                  <strong>{barrio.name}</strong>
-                  <br />
+        [...byLocalidad]
+          .filter(([name]) => selected === null || name === selected)
+          .map(([name, barrios]) => {
+            const polygons = barrios.filter((barrio) => barrio.geometry).length;
+            const neighbors = barrios.reduce((sum, barrio) => sum + barrio.neighbors, 0);
+            return (
+              // Cerradas de entrada; abierta si se eligió esa localidad arriba o si es la única.
+              <details
+                key={name}
+                className={styles.localidadGroup}
+                open={selected !== null || byLocalidad.size === 1}
+              >
+                <summary>
+                  <strong>{name}</strong>
                   <small>
-                    {barrio.localidad ?? SIN_LOCALIDAD} ·{" "}
-                    {barrio.source === "osm"
-                      ? barrio.geometry
-                        ? "OpenStreetMap"
-                        : "OpenStreetMap, solo punto"
-                      : barrio.source === "ptp"
-                        ? "dibujado en el panel"
-                        : barrio.center
-                          ? "vecino, sin polígono"
-                          : "vecino, sin ubicación"}
+                    {barrios.length} {barrios.length === 1 ? "barrio" : "barrios"} · {polygons} con polígono ·{" "}
+                    {neighbors} {neighbors === 1 ? "vecino" : "vecinos"}
                   </small>
-                </td>
-                <td>{barrio.neighbors}</td>
-                <td>
-                  {barrio.neighbors === 0 ? (
-                    <form action={deleteBarrioAdmin}>
-                      <input type="hidden" name="id" value={barrio.id} />
-                      <ConfirmButton
-                        className={`${styles.button} ${styles.buttonDanger}`}
-                        message={`¿Borrar el barrio ${barrio.name}?`}
-                      >
-                        Borrar
-                      </ConfirmButton>
-                    </form>
-                  ) : null}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </summary>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Barrio</th>
+                      <th>Vecinos</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {barrios.map((barrio) => (
+                      <tr key={barrio.id}>
+                        <td>
+                          <strong>{barrio.name}</strong>
+                          <br />
+                          <small>
+                            {barrio.source === "osm"
+                              ? barrio.geometry
+                                ? "OpenStreetMap"
+                                : "OpenStreetMap, solo punto"
+                              : barrio.source === "ptp"
+                                ? "dibujado en el panel"
+                                : barrio.center
+                                  ? "vecino, sin polígono"
+                                  : "vecino, sin ubicación"}
+                          </small>
+                        </td>
+                        <td>{barrio.neighbors}</td>
+                        <td>
+                          <div className={styles.rowActions}>
+                            {barrio.geometry || barrio.center ? (
+                              <VerEnMapa barrioId={barrio.id} className={styles.button} />
+                            ) : null}
+                            {barrio.neighbors === 0 ? (
+                              <form action={deleteBarrioAdmin}>
+                                <input type="hidden" name="id" value={barrio.id} />
+                                <ConfirmButton
+                                  className={`${styles.button} ${styles.buttonDanger}`}
+                                  message={`¿Borrar el barrio ${barrio.name}?`}
+                                >
+                                  Borrar
+                                </ConfirmButton>
+                              </form>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
+            );
+          })
       )}
     </main>
   );
