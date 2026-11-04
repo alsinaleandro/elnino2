@@ -9,7 +9,7 @@ import { leaveBarrioRoles } from "./delegates";
 import { geometryContainsPoint, type GeoJsonMultiPolygon, type PointTuple } from "./geo";
 import { closeHelpPostsOf } from "./help";
 import { sanitize } from "./moderation";
-import { lookupOsm, type OsmBarrio } from "./overpass";
+import { lookupOsm, type OsmBarrio, type OsmPoint } from "./overpass";
 
 export type Barrio = { id: number; name: string; localidad: string | null; source: "osm" | "vecino" | "ptp" };
 
@@ -66,7 +66,7 @@ function findLocalBarrio(lat: number, lon: number) {
   return match ? toBarrio(match) : null;
 }
 
-const findOsmBarrioId = (osm: OsmBarrio) =>
+const findOsmBarrioId = (osm: { osmType: string; osmId: number }) =>
   (
     db.prepare("SELECT id FROM barrios WHERE osm_type = ? AND osm_id = ?").get(osm.osmType, osm.osmId) as
       | { id: number }
@@ -104,46 +104,124 @@ function saveOsmBarrio(osm: OsmBarrio, localidad: string | null) {
   return getBarrio(findOsmBarrioId(osm) ?? insertOsmBarrio(osm, localidad))!;
 }
 
-// Carga en bloque desde el panel: los nuevos se agregan y los que ya estaban se actualizan con el
-// nombre y el polígono de OSM (el id no cambia, así los vecinos siguen en su barrio).
-export function importOsmBarrios(barrios: OsmBarrio[], localidad: string | null) {
-  let added = 0;
-  let updated = 0;
+// Un barrio de la misma localidad con el mismo nombre ("B° Villa Florida" = "Villa Florida").
+function findSameBarrio(name: string, localidad: string | null) {
+  const rows = db
+    .prepare(
+      `SELECT id, localidad, source, osm_id, geometry IS NOT NULL AS has_geometry FROM barrios
+        WHERE normalized_name = ?`,
+    )
+    .all(normalizeBarrioName(name)) as Array<{
+    id: number;
+    localidad: string | null;
+    source: Barrio["source"];
+    osm_id: number | null;
+    has_geometry: number;
+  }>;
+  const target = localidad === null ? null : normalizeBarrioName(localidad);
+  return rows.filter(
+    (row) => row.localidad === null || target === null || normalizeBarrioName(row.localidad) === target,
+  );
+}
+
+function updateOsmPolygon(id: number, osm: OsmBarrio, localidad: string | null) {
+  const box = bbox(osm.geometry);
+  db.prepare(
+    `UPDATE barrios SET name = ?, normalized_name = ?, localidad = ?, source = 'osm', osm_type = ?, osm_id = ?,
+                        geometry = ?, min_lat = ?, min_lon = ?, max_lat = ?, max_lon = ?, center_lat = ?, center_lon = ?
+      WHERE id = ?`,
+  ).run(
+    osm.name,
+    normalizeBarrioName(osm.name),
+    localidad,
+    osm.osmType,
+    osm.osmId,
+    JSON.stringify(osm.geometry),
+    box.minLat,
+    box.minLon,
+    box.maxLat,
+    box.maxLon,
+    (box.minLat + box.maxLat) / 2,
+    (box.minLon + box.maxLon) / 2,
+    id,
+  );
+}
+
+// Carga en bloque desde el panel. Polígonos: los que ya estaban se actualizan con el nombre y el
+// polígono de OSM, y si hay uno del mismo nombre sin polígono (de un vecino o un punto de OSM) se le
+// pone el polígono; el id no cambia, así los vecinos siguen en su barrio. Si el PTP ya lo dibujó a
+// mano, queda el dibujado.
+// Puntos (barrios que en OSM no tienen polígono): se guardan sin polígono, con el punto como centro,
+// salvo que ya haya un barrio con ese nombre; a ese solo se le anota el id de OSM.
+export function importOsmBarrios(barrios: OsmBarrio[], points: OsmPoint[], localidad: string | null) {
+  const counts = { added: 0, updated: 0, pointsAdded: 0, pointsUpdated: 0 };
   db.exec("BEGIN IMMEDIATE");
   try {
     for (const osm of barrios) {
       const id = findOsmBarrioId(osm);
-      if (id === undefined) {
-        insertOsmBarrio(osm, localidad);
-        added++;
+      if (id !== undefined) {
+        updateOsmPolygon(id, osm, localidad);
+        counts.updated++;
         continue;
       }
-      const box = bbox(osm.geometry);
+      const same = findSameBarrio(osm.name, localidad);
+      const withoutPolygon = same.find((row) => !row.has_geometry);
+      if (withoutPolygon) {
+        updateOsmPolygon(withoutPolygon.id, osm, localidad);
+        counts.updated++;
+      } else if (!same.some((row) => row.source === "ptp")) {
+        insertOsmBarrio(osm, localidad);
+        counts.added++;
+      }
+    }
+
+    for (const point of points) {
+      const id = findOsmBarrioId(point);
+      if (id !== undefined) {
+        // Si después alguien le dibujó el polígono, el punto ya no cambia nada.
+        const result = db
+          .prepare(
+            `UPDATE barrios SET name = ?, normalized_name = ?, localidad = ?, center_lat = ?, center_lon = ?
+              WHERE id = ? AND geometry IS NULL`,
+          )
+          .run(point.name, normalizeBarrioName(point.name), localidad, point.lat, point.lon, id);
+        if (Number(result.changes) > 0) counts.pointsUpdated++;
+        continue;
+      }
+      const same = findSameBarrio(point.name, localidad);
+      if (same.length > 0) {
+        const unlinked = same.find((row) => row.osm_id === null);
+        if (unlinked) {
+          db.prepare(
+            `UPDATE barrios SET osm_type = ?, osm_id = ?, center_lat = COALESCE(center_lat, ?),
+                                center_lon = COALESCE(center_lon, ?)
+              WHERE id = ?`,
+          ).run(point.osmType, point.osmId, point.lat, point.lon, unlinked.id);
+          counts.pointsUpdated++;
+        }
+        continue;
+      }
       db.prepare(
-        `UPDATE barrios SET name = ?, normalized_name = ?, localidad = ?, geometry = ?,
-                            min_lat = ?, min_lon = ?, max_lat = ?, max_lon = ?, center_lat = ?, center_lon = ?
-          WHERE id = ?`,
+        `INSERT INTO barrios (name, normalized_name, localidad, source, osm_type, osm_id, center_lat, center_lon, created_at)
+         VALUES (?, ?, ?, 'osm', ?, ?, ?, ?, ?)`,
       ).run(
-        osm.name,
-        normalizeBarrioName(osm.name),
+        point.name,
+        normalizeBarrioName(point.name),
         localidad,
-        JSON.stringify(osm.geometry),
-        box.minLat,
-        box.minLon,
-        box.maxLat,
-        box.maxLon,
-        (box.minLat + box.maxLat) / 2,
-        (box.minLon + box.maxLon) / 2,
-        id,
+        point.osmType,
+        point.osmId,
+        point.lat,
+        point.lon,
+        new Date().toISOString(),
       );
-      updated++;
+      counts.pointsAdded++;
     }
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
     throw error;
   }
-  return { added, updated };
+  return counts;
 }
 
 // ---------- Panel de administración (/ptpadmin/barrios) ----------

@@ -15,8 +15,9 @@ export type BarrioImport = {
   message: string | null;
   added: number;
   updated: number;
-  // Barrios que en OSM son solo un punto, sin polígono.
-  pointOnly: string[];
+  // Barrios que en OSM son solo un punto: se guardan sin polígono.
+  pointsAdded: number;
+  pointsUpdated: number;
 };
 
 const KEEP = 10;
@@ -53,7 +54,8 @@ export function startBarrioImport(value: unknown) {
     message: null,
     added: 0,
     updated: 0,
-    pointOnly: [],
+    pointsAdded: 0,
+    pointsUpdated: 0,
   };
   imports.push(job);
   if (imports.length > KEEP) imports.splice(0, imports.length - KEEP);
@@ -77,16 +79,13 @@ async function run(job: BarrioImport) {
 
     // Se guarda con el nombre que tiene en OSM ("Resistencia"), como al detectar el barrio de un vecino.
     const localidad = result.localidades.length === 1 ? result.localidades[0] : job.localidad;
-    const { added, updated } = importOsmBarrios(result.barrios, localidad);
-    job.added = added;
-    job.updated = updated;
-    job.pointOnly = result.pointOnly;
+    Object.assign(job, importOsmBarrios(result.barrios, result.points, localidad));
     finish(
       job,
       "ok",
-      result.barrios.length === 0
-        ? `${localidad} no tiene barrios con polígono en OpenStreetMap.`
-        : `${localidad}: ${result.barrios.length} barrios con polígono.`,
+      result.barrios.length === 0 && result.points.length === 0
+        ? `${localidad} no tiene barrios en OpenStreetMap.`
+        : `${localidad}: ${result.barrios.length} barrios con polígono y ${result.points.length} solo como punto en OpenStreetMap.`,
     );
   } catch (error) {
     console.error(`[barrios] Falló la carga de ${job.localidad}:`, error);

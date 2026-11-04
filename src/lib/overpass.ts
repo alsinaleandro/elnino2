@@ -32,6 +32,9 @@ type Element = {
   type: "area" | "node" | "way" | "relation";
   id: number;
   tags?: Record<string, string>;
+  // Solo los nodos: su ubicación.
+  lat?: number;
+  lon?: number;
   geometry?: LatLon[];
   members?: Array<{ type: string; role: string; geometry?: LatLon[] }>;
 };
@@ -182,14 +185,17 @@ const LOCALIDAD_TIMEOUT_MS = 150_000;
 // con esperas crecientes: 15 s, 30 s, 60 s, 2 min y 2 min (casi 6 minutos en total).
 const LOCALIDAD_RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 120_000, 120_000];
 
+export type OsmPoint = { osmType: "node"; osmId: number; name: string; lat: number; lon: number };
+
 export type OsmLocalidadLookup =
   | {
       status: "ok";
       // Nombres de los municipios encontrados ("Resistencia"); vacío si no hay ninguno con ese nombre.
       localidades: string[];
       barrios: OsmBarrio[];
-      // Barrios que en OSM son solo un punto, sin polígono: no se pueden usar para detectar.
-      pointOnly: string[];
+      // Barrios que en OSM son solo un punto, sin polígono: no sirven para detectar por GPS, pero sí
+      // para la lista de barrios cercanos del vecino.
+      points: OsmPoint[];
     }
   | { status: "unavailable" };
 
@@ -200,7 +206,7 @@ rel(area.p)[boundary=administrative][admin_level~"^(7|8)$"][name~"^((municipio|m
 out tags;
 map_to_area->.l;
 node(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
-out tags;
+out;
 (way(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
  rel(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
  rel(area.l)[boundary=administrative][admin_level~"^(9|10)$"][name];);
@@ -238,9 +244,18 @@ export async function lookupOsmLocalidad(
     barrios.push({ osmType: element.type, osmId: element.id, name: element.tags.name.trim(), geometry });
   }
 
-  const pointOnly = elements
-    .filter((element) => element.type === "node" && element.tags?.name)
-    .map((element) => element.tags!.name.trim());
+  const points = elements
+    .filter(
+      (element) =>
+        element.type === "node" && element.tags?.name && Number.isFinite(element.lat) && Number.isFinite(element.lon),
+    )
+    .map((element): OsmPoint => ({
+      osmType: "node",
+      osmId: element.id,
+      name: element.tags!.name.trim(),
+      lat: element.lat!,
+      lon: element.lon!,
+    }));
 
-  return { status: "ok", localidades, barrios, pointOnly };
+  return { status: "ok", localidades, barrios, points };
 }

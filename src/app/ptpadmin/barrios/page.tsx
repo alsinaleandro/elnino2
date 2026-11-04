@@ -43,7 +43,7 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
         <h1>Barrios</h1>
         <p>
           Los polígonos de esta base son los que usa la app para proponerle su barrio a cada vecino. Los barrios en azul
-          vienen de OpenStreetMap; los verdes, dibujados a mano acá; los puntos naranjas son barrios que escribieron los vecinos y no tienen polígono.
+          vienen de OpenStreetMap; los verdes, dibujados a mano acá. Los puntos son barrios sin polígono: violetas si vienen de OpenStreetMap, naranjas si los escribió un vecino.
           Para un barrio que falta en OSM, dibujalo con el botón de arriba del mapa.
         </p>
       </header>
@@ -61,8 +61,8 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
           />
         </label>
         <p className={styles.contact}>
-          Se buscan en OpenStreetMap todos los barrios con polígono dentro del municipio. Los que ya estaban se actualizan
-          sin perder a sus vecinos. Si Overpass está saturado se reintenta sola durante unos minutos.
+          Se buscan en OpenStreetMap todos los barrios del municipio, con polígono o solo como punto. Los que ya
+          estaban se actualizan sin perder a sus vecinos, y no se duplican los que ya existen con el mismo nombre. Si Overpass está saturado se reintenta sola durante unos minutos.
         </p>
         {typeof error === "string" ? (
           <p className={styles.formError} role="alert">
@@ -87,14 +87,15 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
               ) : (
                 <p className={item.status === "ok" ? styles.formSuccess : styles.formError}>
                   {item.message}
-                  {item.status === "ok" ? ` ${item.added} nuevos, ${item.updated} actualizados.` : ""}
+                  {item.status === "ok"
+                    ? ` Con polígono: ${item.added} nuevos, ${item.updated} actualizados. Solo punto: ${item.pointsAdded} nuevos, ${item.pointsUpdated} actualizados.`
+                    : ""}
                 </p>
               )}
-              {item.pointOnly.length > 0 ? (
+              {item.pointsAdded + item.pointsUpdated > 0 ? (
                 <p className={styles.contact}>
-                  En OSM figuran solo como un punto, sin polígono ({item.pointOnly.length}):{" "}
-                  {item.pointOnly.join(", ")}. Estos no se pueden detectar hasta que alguien dibuje su polígono en
-                  OpenStreetMap.
+                  Los barrios que son solo un punto (violeta en el mapa) no se detectan por GPS, pero le aparecen al vecino
+                  en la lista de barrios cercanos. Para que se detecten, dibujalos con el mismo nombre y localidad.
                 </p>
               ) : null}
             </li>
@@ -142,7 +143,7 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
       <BarriosMap barrios={shown} localidades={[...byLocalidad.keys()].filter((name) => name !== SIN_LOCALIDAD)} />
       <p className={styles.mapLegend}>
         Mapa de barrios © OpenStreetMap contributors (ODbL). Azul: OpenStreetMap · verde: dibujado en el panel ·
-        naranja: escrito por un vecino, sin polígono. Relleno fuerte: el barrio tiene vecinos.
+        violeta: punto de OpenStreetMap, sin polígono · naranja: escrito por un vecino, sin polígono. Relleno fuerte: el barrio tiene vecinos.
       </p>
 
       {shown.length === 0 ? (
@@ -165,7 +166,9 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
                   <small>
                     {barrio.localidad ?? SIN_LOCALIDAD} ·{" "}
                     {barrio.source === "osm"
-                      ? "OpenStreetMap"
+                      ? barrio.geometry
+                        ? "OpenStreetMap"
+                        : "OpenStreetMap, solo punto"
                       : barrio.source === "ptp"
                         ? "dibujado en el panel"
                         : barrio.center

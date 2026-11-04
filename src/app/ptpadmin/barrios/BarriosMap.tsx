@@ -7,8 +7,8 @@ import { createBarrioAdmin, type DrawnBarrioState } from "../actions";
 import styles from "../admin.module.css";
 
 // Mapa de los barrios cargados en la base: los polígonos de OpenStreetMap (azul), los dibujados a mano
-// desde el panel (verde) y los que escribieron los vecinos, sin polígono, como un punto en su centro
-// (naranja). Al tocarlos se ve el nombre, la localidad y cuántos vecinos tienen.
+// desde el panel (verde) y los barrios sin polígono como un punto en su centro: violeta si son un
+// punto de OpenStreetMap, naranja si los escribió un vecino. Al tocarlos se ve el nombre, la localidad y cuántos vecinos tienen.
 //
 // Con "Dibujar un barrio" cada toque en el mapa agrega un vértice del contorno; después se escribe
 // el nombre y la localidad y se guarda.
@@ -21,6 +21,7 @@ const AMGR_BOUNDS: [[number, number], [number, number]] = [
 
 const SOURCE_INFO = {
   osm: { color: "#1d4ed8", fill: "#60a5fa", label: "Polígono de OpenStreetMap" },
+  osmPoint: { color: "#7c3aed", fill: "#7c3aed", label: "Punto de OpenStreetMap, sin polígono" },
   ptp: { color: "#15803d", fill: "#4ade80", label: "Dibujado a mano en el panel" },
   vecino: { color: "#ea580c", fill: "#ea580c", label: "Escrito por un vecino, sin polígono" },
 } as const;
@@ -30,6 +31,9 @@ const DRAW_COLOR = "#be123c";
 // [lat, lon] como los usa Leaflet.
 type Vertex = [number, number];
 
+const sourceInfo = (barrio: AdminBarrio) =>
+  SOURCE_INFO[barrio.source === "osm" && !barrio.geometry ? "osmPoint" : barrio.source];
+
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
 
 function popupHtml(barrio: AdminBarrio) {
@@ -38,7 +42,7 @@ function popupHtml(barrio: AdminBarrio) {
     `<strong>${escapeHtml(barrio.name)}</strong><br>` +
     `${barrio.localidad ? `${escapeHtml(barrio.localidad)}<br>` : ""}` +
     `${neighbors}<br>` +
-    `<small>${SOURCE_INFO[barrio.source].label}</small>`
+    `<small>${sourceInfo(barrio).label}</small>`
   );
 }
 
@@ -116,7 +120,7 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
         const layers: any[] = [];
         const bounds = L.latLngBounds([]);
         for (const barrio of barrios) {
-          const info = SOURCE_INFO[barrio.source];
+          const info = sourceInfo(barrio);
           if (barrio.geometry) {
             const layer = L.geoJSON(barrio.geometry, {
               style: {
