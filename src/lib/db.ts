@@ -140,7 +140,7 @@ function applyMigrations(db: DatabaseSync) {
       name            TEXT NOT NULL,
       normalized_name TEXT NOT NULL,
       localidad       TEXT,
-      source          TEXT NOT NULL CHECK (source IN ('osm', 'vecino')),
+      source          TEXT NOT NULL CHECK (source IN ('osm', 'vecino', 'ptp')),
       osm_type        TEXT,
       osm_id          INTEGER,
       geometry        TEXT,
@@ -271,6 +271,8 @@ function applyMigrations(db: DatabaseSync) {
   // Ingreso con e-mail y contraseña: hash scrypt de la contraseña (NULL si solo entra con Google).
   addColumn(db, "neighbors", "password_hash", "TEXT");
   allowNeighborsWithoutGoogle(db);
+  // Barrios dibujados a mano desde el panel (source = 'ptp').
+  allowPtpBarrios(db);
   // Ubicación GPS del vecino cuando eligió su barrio por primera vez (NULL si no dio permiso). No
   // se publica ni la ve ningún vecino. Van después de rehacer la tabla, que no las conoce.
   addColumn(db, "neighbors", "latitude", "REAL");
@@ -318,6 +320,50 @@ function allowNeighborsWithoutGoogle(db: DatabaseSync) {
   `);
   if (sequence) {
     db.prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'neighbors'").run(sequence.seq);
+  }
+}
+
+// Las bases creadas antes de poder dibujar barrios desde el panel solo aceptan source 'osm' o
+// 'vecino'. SQLite no deja cambiar un CHECK: se rehace la tabla una sola vez, con los mismos ids.
+function allowPtpBarrios(db: DatabaseSync) {
+  const table = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'barrios'").get() as
+    | { sql: string }
+    | undefined;
+  if (!table || table.sql.includes("'ptp'")) return;
+
+  const sequence = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'barrios'").get() as
+    | { seq: number }
+    | undefined;
+  db.exec(`
+    CREATE TABLE barrios_new (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      name            TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      localidad       TEXT,
+      source          TEXT NOT NULL CHECK (source IN ('osm', 'vecino', 'ptp')),
+      osm_type        TEXT,
+      osm_id          INTEGER,
+      geometry        TEXT,
+      min_lat         REAL,
+      min_lon         REAL,
+      max_lat         REAL,
+      max_lon         REAL,
+      center_lat      REAL,
+      center_lon      REAL,
+      created_at      TEXT NOT NULL,
+      UNIQUE (osm_type, osm_id)
+    );
+    INSERT INTO barrios_new SELECT id, name, normalized_name, localidad, source, osm_type, osm_id, geometry,
+                                   min_lat, min_lon, max_lat, max_lon, center_lat, center_lon, created_at
+                              FROM barrios;
+    DROP TABLE barrios;
+    ALTER TABLE barrios_new RENAME TO barrios;
+    CREATE INDEX IF NOT EXISTS barrios_bbox ON barrios (min_lat, max_lat, min_lon, max_lon);
+    CREATE INDEX IF NOT EXISTS barrios_center ON barrios (center_lat, center_lon);
+    CREATE INDEX IF NOT EXISTS barrios_name ON barrios (normalized_name);
+  `);
+  if (sequence) {
+    db.prepare("UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'barrios'").run(sequence.seq);
   }
 }
 

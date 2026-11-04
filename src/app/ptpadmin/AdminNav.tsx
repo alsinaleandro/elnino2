@@ -8,6 +8,7 @@ const ITEMS = [
   { key: "ayuda", label: "Ayuda mutua", href: "/ptpadmin/ayuda" },
   { key: "delegados", label: "Delegados", href: "/ptpadmin/delegados" },
   { key: "inundaciones", label: "Inundaciones", href: "/ptpadmin/inundaciones" },
+  { key: "barrios", label: "Barrios", href: "/ptpadmin/barrios" },
   { key: "estadisticas", label: "Estadísticas", href: "/ptpadmin/estadisticas" },
 ] as const;
 

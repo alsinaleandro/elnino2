@@ -29,7 +29,7 @@ export type OsmLookup =
 
 type LatLon = { lat: number; lon: number };
 type Element = {
-  type: "area" | "way" | "relation";
+  type: "area" | "node" | "way" | "relation";
   id: number;
   tags?: Record<string, string>;
   geometry?: LatLon[];
@@ -141,25 +141,93 @@ function pickBarrio(elements: Element[], point: PointTuple): OsmBarrio | null {
   };
 }
 
-export async function lookupOsm(lat: number, lon: number): Promise<OsmLookup> {
+// Prueba los servidores en orden; null si ninguno contestó a tiempo.
+async function runQuery(data: string, timeoutMs: number): Promise<Element[] | null> {
   for (const server of SERVERS) {
     try {
       const response = await fetch(server, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "elnino2 (ptpchaco.org.ar)" },
-        body: new URLSearchParams({ data: query(lat, lon) }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
+        body: new URLSearchParams({ data }),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const { elements } = (await response.json()) as { elements: Element[] };
-      return {
-        status: "ok",
-        barrio: pickBarrio(elements, [lon, lat]),
-        localidad: pickLocalidad(elements.filter((element) => element.type === "area")),
-      };
+      return elements;
     } catch (error) {
       console.warn(`[barrios] Overpass no respondió (${server}):`, error instanceof Error ? error.message : error);
     }
   }
-  return { status: "unavailable" };
+  return null;
+}
+
+export async function lookupOsm(lat: number, lon: number): Promise<OsmLookup> {
+  const elements = await runQuery(query(lat, lon), TIMEOUT_MS);
+  if (!elements) return { status: "unavailable" };
+  return {
+    status: "ok",
+    barrio: pickBarrio(elements, [lon, lat]),
+    localidad: pickLocalidad(elements.filter((element) => element.type === "area")),
+  };
+}
+
+// ---------- Carga de todos los barrios de una localidad (desde /ptpadmin/barrios) ----------
+
+// Solo se buscan localidades del Chaco, para no confundir "Fontana" o "Resistencia" con otras del país.
+const PROVINCE_ISO = "AR-H";
+
+// Desde el panel se puede esperar mucho más que en el registro del vecino.
+const LOCALIDAD_TIMEOUT_MS = 150_000;
+
+export type OsmLocalidadLookup =
+  | {
+      status: "ok";
+      // Nombres de los municipios encontrados ("Resistencia"); vacío si no hay ninguno con ese nombre.
+      localidades: string[];
+      barrios: OsmBarrio[];
+      // Barrios que en OSM son solo un punto, sin polígono: no se pueden usar para detectar.
+      pointOnly: string[];
+    }
+  | { status: "unavailable" };
+
+// El municipio (nivel 7 u 8) con ese nombre, con o sin "Municipio de", y los barrios dentro de él.
+const localidadQuery = (name: string) => `[out:json][timeout:120];
+area["ISO3166-2"="${PROVINCE_ISO}"]->.p;
+rel(area.p)[boundary=administrative][admin_level~"^(7|8)$"][name~"^((municipio|municipalidad|comuna|ciudad) de )?${name}$",i];
+out tags;
+map_to_area->.l;
+node(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
+out tags;
+(way(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
+ rel(area.l)[place~"^(neighbourhood|suburb|quarter)$"][name];
+ rel(area.l)[boundary=administrative][admin_level~"^(9|10)$"][name];);
+out geom;`;
+
+// "name" ya viene validado (solo letras, espacios, guiones y apóstrofos): no rompe la consulta.
+export async function lookupOsmLocalidad(name: string): Promise<OsmLocalidadLookup> {
+  const elements = await runQuery(localidadQuery(name), LOCALIDAD_TIMEOUT_MS);
+  if (!elements) return { status: "unavailable" };
+
+  const isMunicipio = (element: Element) =>
+    element.type === "relation" && /^(7|8)$/.test(element.tags?.admin_level ?? "");
+  const localidades = [
+    ...new Set(elements.filter(isMunicipio).map((element) => cleanLocalidad(element.tags!.name))),
+  ];
+
+  const barrios: OsmBarrio[] = [];
+  const seen = new Set<string>();
+  for (const element of elements) {
+    if ((element.type !== "way" && element.type !== "relation") || isMunicipio(element) || !element.tags?.name) continue;
+    const key = `${element.type}/${element.id}`;
+    const geometry = seen.has(key) ? null : toMultiPolygon(element);
+    if (!geometry) continue;
+    seen.add(key);
+    barrios.push({ osmType: element.type, osmId: element.id, name: element.tags.name.trim(), geometry });
+  }
+
+  const pointOnly = elements
+    .filter((element) => element.type === "node" && element.tags?.name)
+    .map((element) => element.tags!.name.trim());
+
+  return { status: "ok", localidades, barrios, pointOnly };
 }

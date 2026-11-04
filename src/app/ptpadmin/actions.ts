@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { deleteMessage, setMessageHidden } from "@/lib/admin";
 import { login, logout, requireAdmin } from "@/lib/adminAuth";
+import { startBarrioImport } from "@/lib/barrioImport";
+import { createDrawnBarrio, deleteEmptyBarrio } from "@/lib/barrios";
 import { ValidationError } from "@/lib/contact";
 import { deleteFloodReport } from "@/lib/floods";
 import { addPtpNews, deleteNews } from "@/lib/news";
@@ -97,4 +99,57 @@ export async function deleteNewsAdmin(formData: FormData) {
   const id = Number(formData.get("id"));
   if (Number.isInteger(id) && id > 0) deleteNews(id);
   revalidatePath("/ptpadmin/novedades");
+}
+
+// ---------- Barrios (polígonos de OpenStreetMap) ----------
+
+// Arranca la carga en segundo plano y vuelve enseguida: la página muestra cómo va.
+export async function importBarriosAdmin(formData: FormData) {
+  await requireAdmin();
+
+  let error: string | null = null;
+  try {
+    startBarrioImport(formData.get("localidad"));
+  } catch (reason) {
+    if (!(reason instanceof ValidationError)) throw reason;
+    error = reason.message;
+  }
+  redirect(`/ptpadmin/barrios${error ? `?error=${encodeURIComponent(error)}` : ""}`);
+}
+
+export async function deleteBarrioAdmin(formData: FormData) {
+  await requireAdmin();
+
+  const id = Number(formData.get("id"));
+  let error: string | null = null;
+  if (Number.isInteger(id) && id > 0) {
+    try {
+      deleteEmptyBarrio(id);
+    } catch (reason) {
+      if (!(reason instanceof ValidationError)) throw reason;
+      error = reason.message;
+    }
+  }
+  redirect(`/ptpadmin/barrios${error ? `?error=${encodeURIComponent(error)}` : ""}`);
+}
+
+export type DrawnBarrioState = { error: string | null; created: string | null };
+
+// Barrio dibujado a mano en el mapa del panel: nombre, localidad y el contorno ([lon, lat] por vértice).
+export async function createBarrioAdmin(_state: DrawnBarrioState, formData: FormData): Promise<DrawnBarrioState> {
+  await requireAdmin();
+
+  try {
+    const { barrio, replaced } = createDrawnBarrio(formData.get("name"), formData.get("localidad"), formData.get("ring"));
+    revalidatePath("/ptpadmin/barrios");
+    return {
+      error: null,
+      created: replaced
+        ? `${barrio.name} ya existía sin polígono: ahora tiene el que dibujaste, con sus vecinos.`
+        : `Listo: ${barrio.name} (${barrio.localidad}) quedó cargado.`,
+    };
+  } catch (reason) {
+    if (!(reason instanceof ValidationError)) throw reason;
+    return { error: reason.message, created: null };
+  }
 }
