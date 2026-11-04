@@ -62,7 +62,7 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
         </label>
         <p className={styles.contact}>
           Se buscan en OpenStreetMap todos los barrios con polígono dentro del municipio. Los que ya estaban se actualizan
-          sin perder a sus vecinos. Puede tardar un par de minutos si Overpass está cargado.
+          sin perder a sus vecinos. Si Overpass está saturado se reintenta sola durante unos minutos.
         </p>
         {typeof error === "string" ? (
           <p className={styles.formError} role="alert">
@@ -83,7 +83,7 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
                 <span className={styles.date}>{timeAgo(item.startedAt)}</span>
               </div>
               {item.status === "running" ? (
-                <p className={styles.message}>⏳ Consultando OpenStreetMap…</p>
+                <p className={styles.message}>⏳ Consultando OpenStreetMap…{item.message ? ` ${item.message}` : ""}</p>
               ) : (
                 <p className={item.status === "ok" ? styles.formSuccess : styles.formError}>
                   {item.message}

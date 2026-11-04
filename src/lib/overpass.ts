@@ -178,6 +178,9 @@ const PROVINCE_ISO = "AR-H";
 
 // Desde el panel se puede esperar mucho más que en el registro del vecino.
 const LOCALIDAD_TIMEOUT_MS = 150_000;
+// Cuando Overpass está saturado contesta al instante con 502 o 504 ("at capacity") y pide reintentar
+// con esperas crecientes: 15 s, 30 s, 60 s, 2 min y 2 min (casi 6 minutos en total).
+const LOCALIDAD_RETRY_DELAYS_MS = [15_000, 30_000, 60_000, 120_000, 120_000];
 
 export type OsmLocalidadLookup =
   | {
@@ -204,8 +207,18 @@ out tags;
 out geom;`;
 
 // "name" ya viene validado (solo letras, espacios, guiones y apóstrofos): no rompe la consulta.
-export async function lookupOsmLocalidad(name: string): Promise<OsmLocalidadLookup> {
-  const elements = await runQuery(localidadQuery(name), LOCALIDAD_TIMEOUT_MS);
+// "onRetry" avisa cada reintento, para mostrar en el panel que la carga sigue.
+export async function lookupOsmLocalidad(
+  name: string,
+  onRetry?: (attempt: number, waitMs: number) => void,
+): Promise<OsmLocalidadLookup> {
+  let elements = await runQuery(localidadQuery(name), LOCALIDAD_TIMEOUT_MS);
+  for (const [index, waitMs] of LOCALIDAD_RETRY_DELAYS_MS.entries()) {
+    if (elements) break;
+    onRetry?.(index + 2, waitMs);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    elements = await runQuery(localidadQuery(name), LOCALIDAD_TIMEOUT_MS);
+  }
   if (!elements) return { status: "unavailable" };
 
   const isMunicipio = (element: Element) =>

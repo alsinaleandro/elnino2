@@ -73,10 +73,18 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
     return result;
   }, { error: null, created: null });
 
+  // Dibujando, dos toques seguidos son dos vértices, no un zoom.
   useEffect(() => {
     drawingRef.current = drawing;
     containerRef.current?.style.setProperty("cursor", drawing ? "crosshair" : "");
-  }, [drawing]);
+    const map = ready ? mapRef.current?.map : null;
+    if (drawing) {
+      map?.closePopup();
+      map?.doubleClickZoom.disable();
+    } else {
+      map?.doubleClickZoom.enable();
+    }
+  }, [drawing, ready]);
 
   useEffect(() => {
     const { barrios } = shown;
@@ -94,6 +102,18 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
           maxZoom: 19,
         }).addTo(map);
 
+        // El popup se abre a mano: dibujando no se abre (si no, el mapa se desplaza para mostrarlo y el
+        // toque siguiente se pierde) y el toque sigue al mapa, que agrega el vértice.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const showPopup = (barrio: AdminBarrio) => (event: any) => {
+          if (!drawingRef.current) L.popup({ maxWidth: 260 }).setLatLng(event.latlng).setContent(popupHtml(barrio)).openOn(map);
+        };
+
+        // Las capas se arman primero y se agregan después de fijar la vista. Agregadas antes, Leaflet las
+        // encola hasta tener vista y, con polígonos y puntos mezclados, un polígono puede dibujarse antes
+        // que el renderer que comparten esté listo ("Cannot read properties of undefined (reading 'min')").
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const layers: any[] = [];
         const bounds = L.latLngBounds([]);
         for (const barrio of barrios) {
           const info = SOURCE_INFO[barrio.source];
@@ -106,33 +126,33 @@ export default function BarriosMap({ barrios, localidades }: { barrios: AdminBar
                 fillOpacity: barrio.neighbors > 0 ? 0.3 : 0.15,
               },
             })
-              .bindPopup(popupHtml(barrio), { maxWidth: 260 })
-              .bindTooltip(barrio.name, { sticky: true })
-              .addTo(map);
+              .on("click", showPopup(barrio))
+              .bindTooltip(barrio.name, { sticky: true });
+            layers.push(layer);
             bounds.extend(layer.getBounds());
           } else if (barrio.center) {
-            L.circleMarker([barrio.center.lat, barrio.center.lon], {
+            const marker = L.circleMarker([barrio.center.lat, barrio.center.lon], {
               radius: 7,
               color: "#ffffff",
               weight: 2,
               fillColor: info.fill,
               fillOpacity: 0.9,
             })
-              .bindPopup(popupHtml(barrio), { maxWidth: 260 })
-              .bindTooltip(barrio.name)
-              .addTo(map);
+              .on("click", showPopup(barrio))
+              .bindTooltip(barrio.name);
+            layers.push(marker);
             bounds.extend([barrio.center.lat, barrio.center.lon]);
           }
         }
 
         if (bounds.isValid()) map.fitBounds(bounds.pad(0.05), { maxZoom: 15 });
         else map.fitBounds(AMGR_BOUNDS);
+        for (const layer of layers) layer.addTo(map);
 
-        // Dibujando, el toque agrega un vértice (aunque caiga sobre otro barrio: se cierra su popup).
+        // Dibujando, el toque agrega un vértice (aunque caiga sobre otro barrio).
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         map.on("click", (event: any) => {
           if (!drawingRef.current) return;
-          map.closePopup();
           const vertex: Vertex = [Number(event.latlng.lat.toFixed(6)), Number(event.latlng.lng.toFixed(6))];
           setVertices((current) => [...current, vertex]);
         });

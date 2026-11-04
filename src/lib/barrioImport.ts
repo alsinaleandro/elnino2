@@ -63,9 +63,11 @@ export function startBarrioImport(value: unknown) {
 
 async function run(job: BarrioImport) {
   try {
-    const result = await lookupOsmLocalidad(job.localidad);
+    const result = await lookupOsmLocalidad(job.localidad, (attempt, waitMs) => {
+      job.message = `Overpass está saturado: intento ${attempt} en ${Math.round(waitMs / 1000)} s.`;
+    });
     if (result.status === "unavailable") {
-      finish(job, "error", "OpenStreetMap (Overpass) no respondió. Probá de nuevo en un rato.");
+      finish(job, "error", "OpenStreetMap (Overpass) siguió saturado durante varios minutos. Probá de nuevo más tarde.");
       return;
     }
     if (result.localidades.length === 0) {
