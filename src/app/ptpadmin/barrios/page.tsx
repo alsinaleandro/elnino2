@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/adminAuth";
-import { listBarrioImports } from "@/lib/barrioImport";
+import { takeBarrioImports } from "@/lib/barrioImport";
 import { listBarriosForAdmin } from "@/lib/barrios";
 import ConfirmButton from "../../ConfirmButton";
 import { timeAgo } from "../../format";
@@ -24,7 +24,7 @@ export default async function AdminBarriosPage({ searchParams }: PageProps<"/ptp
 
   const { error, localidad } = await searchParams;
   const all = listBarriosForAdmin();
-  const imports = listBarrioImports();
+  const imports = takeBarrioImports();
   const running = imports.some((item) => item.status === "running");
 
   const byLocalidad = new Map<string, typeof all>();

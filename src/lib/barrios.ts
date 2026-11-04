@@ -1,7 +1,9 @@
 // Barrios de los comités (Idea 1, etapa 2). Detección a demanda con el GPS del vecino:
-//   1. ¿El punto cae en un polígono de la base local? Ese es el barrio.
-//   2. Si no, se pregunta a OpenStreetMap (overpass.ts) y, si tiene el polígono, se copia a la base.
-//   3. Si OSM no lo tiene (o no responde), el vecino elige uno cercano o escribe el suyo.
+//   1. ¿El punto cae en un polígono de la base local, o hay un barrio sin polígono muy cerca? Ese es.
+//   2. Si no, se pregunta a OpenStreetMap (nominatim.ts) el nombre del barrio y se le propone.
+//   3. Si OSM no lo sabe (o no responde), el vecino elige uno cercano o escribe el suyo, y el barrio
+//      queda guardado con su punto para los vecinos que vengan después.
+// Los polígonos se cargan desde /ptpadmin/barrios (overpass.ts), no en la detección.
 // La app solo propone: el vecino confirma o corrige, porque tiene que ser donde vive.
 import { ValidationError } from "./contact";
 import { db } from "./db";
@@ -9,7 +11,8 @@ import { leaveBarrioRoles } from "./delegates";
 import { geometryContainsPoint, type GeoJsonMultiPolygon, type PointTuple } from "./geo";
 import { closeHelpPostsOf } from "./help";
 import { sanitize } from "./moderation";
-import { lookupOsm, type OsmBarrio, type OsmPoint } from "./overpass";
+import { lookupNominatim } from "./nominatim";
+import type { OsmBarrio, OsmPoint } from "./overpass";
 
 export type Barrio = { id: number; name: string; localidad: string | null; source: "osm" | "vecino" | "ptp" };
 
@@ -18,10 +21,14 @@ export type Detection = {
   localidad: string | null;
   // Barrios cargados cerca del punto, para elegir uno antes de escribir uno nuevo.
   nearby: Barrio[];
+  // Barrio que propone OSM y que todavía no está en la base: se ofrece ya escrito.
+  suggestion: { name: string; localidad: string | null } | null;
   osmUnavailable: boolean;
 };
 
 const NEARBY_KM = 3;
+// Un barrio sin polígono (punto de OSM o de vecinos) a menos de esto se propone como el del vecino.
+const NEAR_POINT_KM = 0.4;
 const NEARBY_LIMIT = 8;
 
 type BarrioRow = { id: number; name: string; localidad: string | null; source: "osm" | "vecino" | "ptp" };
@@ -66,6 +73,28 @@ function findLocalBarrio(lat: number, lon: number) {
   return match ? toBarrio(match) : null;
 }
 
+// Paso 1, sin polígono: el barrio más cercano entre los puntos de OSM y los de sus vecinos.
+function findNearPointBarrio(lat: number, lon: number) {
+  const delta = NEAR_POINT_KM / 111;
+  const rows = db
+    .prepare(
+      `SELECT b.id, b.name, b.localidad, b.source, p.lat, p.lon
+         FROM (SELECT id AS barrio_id, center_lat AS lat, center_lon AS lon FROM barrios WHERE geometry IS NULL
+               UNION ALL
+               SELECT barrio_id, latitude, longitude FROM barrio_points) p
+         JOIN barrios b ON b.id = p.barrio_id
+        WHERE b.geometry IS NULL AND p.lat BETWEEN ? AND ? AND p.lon BETWEEN ? AND ?`,
+    )
+    .all(lat - delta, lat + delta, lon - delta * 1.2, lon + delta * 1.2) as Array<
+    BarrioRow & { lat: number; lon: number }
+  >;
+  const nearest = rows
+    .map((row) => ({ row, km: kmBetween(lat, lon, row.lat, row.lon) }))
+    .filter((item) => item.km <= NEAR_POINT_KM)
+    .sort((a, b) => a.km - b.km)[0];
+  return nearest ? toBarrio(nearest.row) : null;
+}
+
 const findOsmBarrioId = (osm: { osmType: string; osmId: number }) =>
   (
     db.prepare("SELECT id FROM barrios WHERE osm_type = ? AND osm_id = ?").get(osm.osmType, osm.osmId) as
@@ -97,11 +126,6 @@ function insertOsmBarrio(osm: OsmBarrio, localidad: string | null) {
       new Date().toISOString(),
     );
   return Number(result.lastInsertRowid);
-}
-
-// Paso 2: copia a la base el polígono que devolvió OSM (si ya estaba, lo reutiliza).
-function saveOsmBarrio(osm: OsmBarrio, localidad: string | null) {
-  return getBarrio(findOsmBarrioId(osm) ?? insertOsmBarrio(osm, localidad))!;
 }
 
 // Un barrio de la misma localidad con el mismo nombre ("B° Villa Florida" = "Villa Florida").
@@ -373,21 +397,27 @@ function nearbyBarrios(lat: number, lon: number, excludeId: number | null) {
 }
 
 export async function detectBarrio(lat: number, lon: number): Promise<Detection> {
-  let barrio = findLocalBarrio(lat, lon);
+  let barrio = findLocalBarrio(lat, lon) ?? findNearPointBarrio(lat, lon);
   let localidad = barrio?.localidad ?? null;
+  let suggestion: Detection["suggestion"] = null;
   let osmUnavailable = false;
 
   if (!barrio) {
-    const osm = await lookupOsm(lat, lon);
+    const osm = await lookupNominatim(lat, lon);
     if (osm.status === "ok") {
       localidad = osm.localidad;
-      if (osm.barrio) barrio = saveOsmBarrio(osm.barrio, osm.localidad);
+      if (osm.barrio) {
+        // Si ya está en la base con el mismo nombre (sin polígono y lejos del punto), se usa ese.
+        const same = findSameBarrio(osm.barrio, osm.localidad)[0];
+        if (same) barrio = getBarrio(same.id);
+        else suggestion = { name: osm.barrio, localidad: osm.localidad };
+      }
     } else {
       osmUnavailable = true;
     }
   }
 
-  return { barrio, localidad, nearby: nearbyBarrios(lat, lon, barrio?.id ?? null), osmUnavailable };
+  return { barrio, localidad, nearby: nearbyBarrios(lat, lon, barrio?.id ?? null), suggestion, osmUnavailable };
 }
 
 function requireBarrioName(value: unknown, label: string) {

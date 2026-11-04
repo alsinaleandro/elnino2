@@ -20,12 +20,12 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 - Si el barrio no está en la información cargada, el usuario lo ingresa manualmente y queda guardado en la base de datos de barrios (una tabla específica, o más de una).
 - Fuente de la capa de barrios: OpenStreetMap. Cubre la mayor parte de Resistencia con polígonos; falta el microcentro y algunas zonas del borde.
 
-**Carga de barrios a demanda (en vez de descargar las ~70 localidades del Chaco)**
-1. Buscar si el punto GPS del vecino cae dentro de algún polígono de la base local. Si cae, ese es su barrio.
-2. Si no, consultar a OSM (Overpass API, función `is_in`) qué barrio contiene ese punto. En la misma consulta se obtiene la localidad (límite municipal).
-3. Si OSM tiene el polígono, copiarlo completo a la base propia; de ahí en adelante se usa desde la base local.
-4. Si OSM no lo tiene, preguntar al vecino el nombre de su barrio (mostrando antes los barrios cercanos ya cargados, para evitar duplicados) y guardar el barrio nuevo junto con el punto del vecino.
-- Si Overpass no responde (servicio gratuito, con límites de uso), no trabar el registro: pasar al paso 4 o reintentar después.
+**Detección del barrio ("Detectar mi barrio"; cambiado el 04/11/2026: ya no se consulta Overpass)**
+1. Buscar si el punto GPS del vecino cae dentro de algún polígono de la base local. Si cae, ese es su barrio. Si no, proponer el barrio sin polígono más cercano (punto de OSM o de otros vecinos) a menos de 400 m.
+2. Si no hay nada en la base, preguntar a OSM con Nominatim (geocodificación inversa, menos de un segundo) el nombre del barrio y la localidad. Si ese barrio ya está en la base con el mismo nombre, se usa ese; si no, se le propone al vecino ya escrito. Nominatim no da polígonos.
+3. Si Nominatim no sabe el barrio (o no responde), el vecino elige uno cercano o escribe el suyo, y se guarda el barrio con su punto para los vecinos que vengan después.
+- Servidor público de Nominatim: como mucho una consulta por segundo (la app las hace de a una) y un User-Agent que identifique a la app.
+- Los polígonos se cargan por localidad desde el panel `/ptpadmin/barrios` (Overpass), o se dibujan a mano ahí.
 - A futuro: con los puntos acumulados de vecinos de un barrio sin polígono, dibujar un polígono aproximado.
 - Licencia: los polígonos copiados de OSM siguen bajo ODbL; mostrar la atribución "© OpenStreetMap contributors".
 
@@ -37,7 +37,7 @@ Notas de ideas y funcionalidades futuras. Este archivo viaja con git, así que e
 
 **Implementación** (en la rama `test`, página `/organizate`)
 - Etapa 1, hecha (31/10/2026): pantalla de aceptación, ingreso con Google (sin librerías, `src/lib/google.ts`), datos del vecino, cerrar sesión y borrar mis datos. El ingreso con e-mail quedó para más adelante.
-- Etapa 2, hecha (31/10/2026): detección del barrio con los pasos 1 a 4 de arriba (`src/lib/barrios.ts`, `src/lib/overpass.ts`). Se puede cambiar el barrio después.
+- Etapa 2, hecha (31/10/2026): detección del barrio con los pasos de arriba (`src/lib/barrios.ts`; desde el 04/11/2026 con `src/lib/nominatim.ts` en vez de Overpass). Se puede cambiar el barrio después.
 - Etapa 3, hecha (01/11/2026): chat del barrio (`/organizate/chat`, `src/lib/chat.ts`). Mensajes en la tabla `chat_messages`; la página consulta los nuevos cada 5 segundos. Insultos tapados con el filtro de Contactanos, hasta 500 caracteres y 10 mensajes por minuto por vecino. Al borrar los datos se borran también los mensajes del vecino.
 
 **Puntos a definir más adelante**

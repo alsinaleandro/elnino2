@@ -18,6 +18,8 @@ export type BarrioImport = {
   // Barrios que en OSM son solo un punto: se guardan sin polígono.
   pointsAdded: number;
   pointsUpdated: number;
+  // El panel ya mostró el resultado: en la próxima carga de la página no aparece más.
+  seen: boolean;
 };
 
 const KEEP = 10;
@@ -26,8 +28,12 @@ const KEEP = 10;
 const store = globalThis as typeof globalThis & { barrioImports?: BarrioImport[] };
 const imports = (store.barrioImports ??= []);
 
-export function listBarrioImports() {
-  return [...imports].reverse();
+// Las cargas en curso y las terminadas que todavía no se vieron. Una carga terminada se muestra una
+// sola vez: al refrescar la página desaparece.
+export function takeBarrioImports() {
+  const pending = imports.filter((item) => !item.seen).reverse();
+  for (const item of pending) if (item.status !== "running") item.seen = true;
+  return pending;
 }
 
 // Letras, espacios, guiones y apóstrofos: el nombre va dentro de la consulta de Overpass.
@@ -56,6 +62,7 @@ export function startBarrioImport(value: unknown) {
     updated: 0,
     pointsAdded: 0,
     pointsUpdated: 0,
+    seen: false,
   };
   imports.push(job);
   if (imports.length > KEEP) imports.splice(0, imports.length - KEEP);

@@ -8,7 +8,8 @@ import styles from "./organizate.module.css";
 type Point = { lat: number; lon: number; accuracy: number | null };
 
 // Elegir el barrio: con el GPS la app propone uno (y los cercanos ya cargados); el vecino confirma,
-// elige otro o lo escribe. Sin GPS, lo escribe directamente.
+// elige otro o lo escribe. Si el que propone OpenStreetMap no está en la base, aparece ya escrito.
+// Sin GPS, lo escribe directamente.
 export default function BarrioForm({ current }: { current: { name: string; localidad: string | null } | null }) {
   const [state, action, saving] = useActionState(saveBarrio, { error: null });
   const [phase, setPhase] = useState<"inicio" | "buscando" | "elegir">("inicio");
@@ -69,8 +70,9 @@ export default function BarrioForm({ current }: { current: { name: string; local
   }
 
   const detected = detection?.barrio ?? null;
+  const suggestion = detection?.suggestion ?? null;
   const options = [...(detected ? [detected] : []), ...(detection?.nearby ?? [])];
-  const fromOsm = options.some((barrio) => barrio.source === "osm");
+  const fromOsm = suggestion !== null || options.some((barrio) => barrio.source === "osm");
 
   return (
     <form action={action} className={styles.form}>
@@ -83,6 +85,11 @@ export default function BarrioForm({ current }: { current: { name: string; local
         <p className={styles.success}>
           📍 Estás en <strong>{detected.name}</strong>
           {detected.localidad ? ` (${detected.localidad})` : ""}. ¿Es donde vivís?
+        </p>
+      ) : suggestion ? (
+        <p className={styles.success}>
+          📍 Según el mapa estás en <strong>{suggestion.name}</strong>
+          {suggestion.localidad ? ` (${suggestion.localidad})` : ""}. ¿Es donde vivís? Si no, corregilo abajo.
         </p>
       ) : point && detection ? (
         <p className={styles.muted}>
@@ -120,7 +127,13 @@ export default function BarrioForm({ current }: { current: { name: string; local
         <>
           <label className={styles.field}>
             Barrio
-            <input name="name" required maxLength={60} placeholder="Ej. Villa Prosperidad" />
+            <input
+              name="name"
+              required
+              maxLength={60}
+              defaultValue={suggestion?.name ?? ""}
+              placeholder="Ej. Villa Prosperidad"
+            />
           </label>
           <label className={styles.field}>
             Localidad

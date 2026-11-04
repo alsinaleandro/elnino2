@@ -1,7 +1,7 @@
-// Consulta a OpenStreetMap (Overpass API) qué barrio y qué localidad contienen un punto. Overpass es
-// un servicio gratuito con límites de uso que a veces no responde: se prueban los servidores de
-// OVERPASS_URL (separados por comas) en orden y, si ninguno contesta, se devuelve "unavailable"
-// para que el registro siga sin él.
+// Carga desde OpenStreetMap (Overpass API) todos los barrios de una localidad, con sus polígonos, para
+// el panel /ptpadmin/barrios. Overpass es un servicio gratuito con límites de uso que a veces no
+// responde: se prueban los servidores de OVERPASS_URL (separados por comas) en orden y se reintenta.
+// La detección del barrio de cada vecino no lo usa (ver nominatim.ts).
 // Datos © OpenStreetMap contributors, licencia ODbL.
 import { geometryContainsPoint, type GeoJsonMultiPolygon, type PointTuple } from "./geo";
 
@@ -13,19 +13,12 @@ const SERVERS = (
   .map((url) => url.trim())
   .filter(Boolean);
 
-// Por servidor: con los dos de la lista, el vecino espera como mucho unos 16 segundos.
-const TIMEOUT_MS = 8_000;
-
 export type OsmBarrio = {
   osmType: "way" | "relation";
   osmId: number;
   name: string;
   geometry: GeoJsonMultiPolygon;
 };
-
-export type OsmLookup =
-  | { status: "ok"; barrio: OsmBarrio | null; localidad: string | null }
-  | { status: "unavailable" };
 
 type LatLon = { lat: number; lon: number };
 type Element = {
@@ -38,18 +31,6 @@ type Element = {
   geometry?: LatLon[];
   members?: Array<{ type: string; role: string; geometry?: LatLon[] }>;
 };
-
-// Barrios: lugares con nombre (neighbourhood, suburb, quarter) o límites administrativos de nivel
-// 9-10. Localidad: ciudad o pueblo, o el municipio (nivel 6-8). De los barrios se pide el polígono.
-const query = (lat: number, lon: number) => `[out:json][timeout:10];
-is_in(${lat},${lon})->.a;
-(area.a[place~"^(neighbourhood|suburb|quarter)$"][name];
- area.a[boundary=administrative][admin_level~"^(9|10)$"][name];)->.b;
-(area.a[place~"^(city|town|village)$"][name];
- area.a[boundary=administrative][admin_level~"^(6|7|8)$"][name];)->.l;
-.l out tags;
-(way(pivot.b);rel(pivot.b););
-out geom;`;
 
 const toTuple = ({ lat, lon }: LatLon): PointTuple => [lon, lat];
 const samePoint = (a: PointTuple, b: PointTuple) => a[0] === b[0] && a[1] === b[1];
@@ -104,45 +85,8 @@ function toMultiPolygon(element: Element): GeoJsonMultiPolygon | null {
   return { type: "MultiPolygon", coordinates: polygons };
 }
 
-const bboxArea = (geometry: GeoJsonMultiPolygon) => {
-  const points = geometry.coordinates.flatMap((polygon) => polygon[0]);
-  const lons = points.map((point) => point[0]);
-  const lats = points.map((point) => point[1]);
-  return (Math.max(...lons) - Math.min(...lons)) * (Math.max(...lats) - Math.min(...lats));
-};
-
 // "Municipio de Resistencia" → "Resistencia".
 const cleanLocalidad = (name: string) => name.replace(/^(municipio|municipalidad|comuna|ciudad) de /i, "").trim();
-
-function pickLocalidad(areas: Element[]) {
-  const places = areas.filter((area) => area.tags?.place);
-  if (places.length) return cleanLocalidad(places[0].tags!.name);
-  const boundaries = areas
-    .filter((area) => area.tags?.admin_level)
-    .sort((a, b) => Number(b.tags!.admin_level) - Number(a.tags!.admin_level));
-  return boundaries.length ? cleanLocalidad(boundaries[0].tags!.name) : null;
-}
-
-// Si el punto cae en más de un barrio (uno dentro de otro), se queda el más chico.
-function pickBarrio(elements: Element[], point: PointTuple): OsmBarrio | null {
-  const candidates = elements
-    .filter((element) => (element.type === "way" || element.type === "relation") && element.tags?.name)
-    .map((element) => ({ element, geometry: toMultiPolygon(element) }))
-    .filter(
-      (item): item is { element: Element; geometry: GeoJsonMultiPolygon } =>
-        item.geometry !== null && geometryContainsPoint(item.geometry, point),
-    )
-    .sort((a, b) => bboxArea(a.geometry) - bboxArea(b.geometry));
-
-  const best = candidates[0];
-  if (!best) return null;
-  return {
-    osmType: best.element.type as OsmBarrio["osmType"],
-    osmId: best.element.id,
-    name: best.element.tags!.name.trim(),
-    geometry: best.geometry,
-  };
-}
 
 // Prueba los servidores en orden; null si ninguno contestó a tiempo.
 async function runQuery(data: string, timeoutMs: number): Promise<Element[] | null> {
@@ -164,22 +108,12 @@ async function runQuery(data: string, timeoutMs: number): Promise<Element[] | nu
   return null;
 }
 
-export async function lookupOsm(lat: number, lon: number): Promise<OsmLookup> {
-  const elements = await runQuery(query(lat, lon), TIMEOUT_MS);
-  if (!elements) return { status: "unavailable" };
-  return {
-    status: "ok",
-    barrio: pickBarrio(elements, [lon, lat]),
-    localidad: pickLocalidad(elements.filter((element) => element.type === "area")),
-  };
-}
-
 // ---------- Carga de todos los barrios de una localidad (desde /ptpadmin/barrios) ----------
 
 // Solo se buscan localidades del Chaco, para no confundir "Fontana" o "Resistencia" con otras del país.
 const PROVINCE_ISO = "AR-H";
 
-// Desde el panel se puede esperar mucho más que en el registro del vecino.
+// Desde el panel se puede esperar mucho: la carga corre en segundo plano.
 const LOCALIDAD_TIMEOUT_MS = 150_000;
 // Cuando Overpass está saturado contesta al instante con 502 o 504 ("at capacity") y pide reintentar
 // con esperas crecientes: 15 s, 30 s, 60 s, 2 min y 2 min (casi 6 minutos en total).
